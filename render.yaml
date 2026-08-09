@@ -1,0 +1,40 @@
+services:
+  - type: web
+    name: testora-api
+    runtime: node
+    plan: starter
+    region: oregon
+    buildCommand: npm install && npm run build -w shared && npm run build -w server
+    startCommand: node server/dist/server.js
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: CLIENT_URL
+        value: https://testora.vercel.app
+      - key: MONGODB_URI
+        fromDatabase:
+          name: testora-db
+          property: connectionString
+      - key: JWT_ACCESS_SECRET
+        sync: false
+      - key: JWT_REFRESH_SECRET
+        sync: false
+      - key: COOKIE_SECRET
+        sync: false
+      - key: MAX_FILE_SIZE_MB
+        value: 20
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+
+databases:
+  - name: testora-db
+    databaseName: testora
+    plan: basic-512
+    region: oregon
