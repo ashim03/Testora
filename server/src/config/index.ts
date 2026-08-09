@@ -33,16 +33,20 @@ function read(name: string): string {
   return value;
 }
 
+function safeRead(name: string, fallback: string): string {
+  return process.env[name] || fallback;
+}
+
 export const config: ServerConfig = {
   nodeEnv: process.env.NODE_ENV || "development",
   port: Number(process.env.PORT || 5000),
-  clientUrl: read("CLIENT_URL") || "http://localhost:5173",
-  mongodbUri: read("MONGODB_URI"),
-  jwtAccessSecret: read("JWT_ACCESS_SECRET"),
-  jwtRefreshSecret: read("JWT_REFRESH_SECRET"),
+  clientUrl: safeRead("CLIENT_URL", "http://localhost:5173"),
+  mongodbUri: process.env.MONGODB_URI || "",
+  jwtAccessSecret: process.env.JWT_ACCESS_SECRET || "",
+  jwtRefreshSecret: process.env.JWT_REFRESH_SECRET || "",
   jwtAccessExpiresIn: process.env.JWT_ACCESS_EXPIRES_IN || "15m",
   jwtRefreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN || "7d",
-  cookieSecret: read("COOKIE_SECRET"),
+  cookieSecret: process.env.COOKIE_SECRET || "",
   maxFileSizeMb: Number(process.env.MAX_FILE_SIZE_MB || 20),
   isProduction: process.env.NODE_ENV === "production",
   cloudinary: {

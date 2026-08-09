@@ -1,4 +1,5 @@
 import express, { Application, Request, Response } from "express";
+import mongoose from "mongoose";
 import cors from "cors";
 import helmet from "helmet";
 import cookieParser from "cookie-parser";
@@ -40,7 +41,14 @@ export function createApp(): Application {
   api.use(sanitizeMongoQuery);
   api.use(sanitizePagination);
   api.get("/health", (_req: Request, res: Response) => {
-    res.json({ success: true, message: "Health check ok", data: { time: new Date().toISOString() } });
+    res.json({
+      success: true,
+      message: "Health check ok",
+      data: {
+        time: new Date().toISOString(),
+        db: mongoose.connection.readyState,
+      },
+    });
   });
   api.use("/auth", authRoutes);
   api.use("/admin", adminRoutes);

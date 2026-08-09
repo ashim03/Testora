@@ -13,7 +13,7 @@ services:
       - key: PORT
         value: 10000
       - key: CLIENT_URL
-        value: https://testora.vercel.app
+        value: https://ieltspte.vercel.app
       - key: MONGODB_URI
         fromDatabase:
           name: testora-db

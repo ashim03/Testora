@@ -4,13 +4,28 @@ import { createApp } from "./app";
 import { startAutoSubmitInterval } from "./jobs/autoSubmit";
 
 async function bootstrap(): Promise<void> {
-  validateEnv();
-  await connectDatabase();
-  startAutoSubmitInterval();
   const app = createApp();
   app.listen(config.port, () => {
     console.log(`[server] listening on http://localhost:${config.port}`);
   });
+  try {
+    validateEnv();
+    await connectDatabase();
+    startAutoSubmitInterval();
+  } catch (error) {
+    console.error("[server] database/env init failed:", error);
+    console.error("[server] retrying database connection every 10s");
+    const retry = setInterval(async () => {
+      try {
+        await connectDatabase();
+        startAutoSubmitInterval();
+        clearInterval(retry);
+        console.log("[server] database connected after retry");
+      } catch (err) {
+        console.error("[server] database retry failed:", err);
+      }
+    }, 10000);
+  }
 }
 
 bootstrap().catch((err) => {
