@@ -5,7 +5,7 @@
   "buildCommand": "npm run build -w shared && npm run build -w client",
   "installCommand": "npm install",
   "rewrites": [
-    { "source": "/api/:path*", "destination": "https://testora-api.onrender.com/api/:path*" },
+    { "source": "/api/:path*", "destination": "https://testora-2its.onrender.com/api/:path*" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
