@@ -67,7 +67,7 @@ export class CloudinaryMediaService implements MediaService {
     const publicId = `${kind.toLowerCase()}/${filename}-${Date.now()}`;
     const { signature, timestamp } = await this.getSignature({ public_id: publicId });
     const body = new FormData();
-    body.append("file", new Blob([buffer], { type: mimeType }));
+    body.append("file", new Blob([new Uint8Array(buffer)], { type: mimeType }));
     body.append("public_id", publicId);
     body.append("timestamp", timestamp);
     body.append("signature", signature);
