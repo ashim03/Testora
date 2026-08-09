@@ -1,0 +1,159 @@
+import { Types } from "mongoose";
+import { Assignment, AssignmentSubmission, Batch } from "../models";
+import { ApiError, parseSort } from "../utils/helpers";
+import { notify, audit, logActivity } from "./notificationService";
+
+export interface AssignmentQuery {
+  page: number;
+  limit: number;
+  search?: string;
+  sort?: string;
+  status?: string;
+}
+
+export async function createAssignment(
+  data: Record<string, unknown>,
+  actor: { id: string; role: string },
+  ip?: string | null,
+): Promise<unknown> {
+  const assignment = await Assignment.create({ ...data, createdBy: actor.id });
+  const studentIds = new Set<string>();
+  for (const id of (data.studentIds as string[]) || []) studentIds.add(id);
+  for (const batchId of (data.batchIds as string[]) || []) {
+    const batch = await Batch.findById(batchId);
+    if (batch) batch.studentIds.forEach((s) => studentIds.add(String(s)));
+  }
+  assignment.studentIds = [...studentIds] as unknown as Types.ObjectId[];
+  assignment.status = "ASSIGNED";
+  await assignment.save();
+  await audit("CREATE_ASSIGNMENT", {
+    actorId: actor.id,
+    actorRole: actor.role,
+    entityType: "Assignment",
+    entityId: String(assignment._id),
+    after: { title: assignment.title },
+  });
+  await logActivity(actor.id, "CREATE_ASSIGNMENT", "Assignment", assignment._id, { title: assignment.title }, ip);
+  for (const sid of studentIds) {
+    await notify(sid, "ASSIGNMENT_CREATED", "New assignment", `A new assignment "${assignment.title}" has been published.`);
+  }
+  return assignment;
+}
+
+export async function listAssignments(query: AssignmentQuery, teacherId: string): Promise<{
+  data: unknown[];
+  total: number;
+  page: number;
+  limit: number;
+  pages: number;
+}> {
+  const page = query.page || 1;
+  const limit = query.limit || 10;
+  const filter: Record<string, unknown> = { createdBy: teacherId, deletedAt: null };
+  if (query.status) filter.status = query.status;
+  if (query.search) {
+    const re = new RegExp(query.search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
+    filter.title = re;
+  }
+  const sort = parseSort(query.sort || "-createdAt", ["createdAt", "title", "status", "dueAt"]);
+  const total = await Assignment.countDocuments(filter);
+  const data = await Assignment.find(filter).sort(sort).skip((page - 1) * limit).limit(limit);
+  return { data, total, page, limit, pages: Math.ceil(total / limit) };
+}
+
+export async function getAssignment(id: string, teacherId: string, studentId?: string): Promise<unknown> {
+  const assignment = await Assignment.findOne({ _id: id, deletedAt: null });
+  if (!assignment) throw new ApiError(404, "Assignment not found");
+  if (teacherId && String(assignment.createdBy) !== teacherId) throw new ApiError(403, "Forbidden");
+  if (studentId && !assignment.studentIds.some((s) => String(s) === studentId)) {
+    throw new ApiError(403, "Assignment not assigned to you");
+  }
+  return assignment;
+}
+
+export async function listSubmission(constantUnused: string, query: { page?: number; limit?: number; status?: string; sort?: string }, teacherId: string): Promise<unknown> {
+  const page = query.page || 1;
+  const limit = query.limit || 10;
+  const assignments = await Assignment.find({ createdBy: teacherId, deletedAt: null }).select("_id").lean();
+  const ids = assignments.map((a) => a._id);
+  const filter: Record<string, unknown> = { assignmentId: { $in: ids } };
+  if (query.status) filter.status = query.status;
+  const total = await AssignmentSubmission.countDocuments(filter);
+  const sort = parseSort(query.sort || "-createdAt", ["createdAt", "marks", "status"]);
+  const data = await AssignmentSubmission.find(filter).sort(sort).skip((page - 1) * limit).limit(limit).populate("assignmentId").populate("studentId", "firstName lastName email");
+  return { data, total, page, limit, pages: Math.ceil(total / limit) };
+}
+
+export async function getSubmission(id: string, teacherId: string): Promise<unknown> {
+  const submission = await AssignmentSubmission.findById(id).populate("assignmentId").populate("studentId", "firstName lastName email");
+  if (!submission) throw new ApiError(404, "Submission not found");
+  const assignment = submission.assignmentId as unknown as { createdBy: Types.ObjectId };
+  if (String(assignment.createdBy) !== teacherId) throw new ApiError(403, "Forbidden");
+  return submission;
+}
+
+export async function gradeSubmission(
+  submissionId: string,
+  data: { score?: number; feedback?: string; requestResubmission?: boolean; published?: boolean },
+  teacherId: string,
+): Promise<unknown> {
+  const submission = await AssignmentSubmission.findById(submissionId);
+  if (!submission) throw new ApiError(404, "Submission not found");
+  const assignment = await Assignment.findById(submission.assignmentId);
+  if (!assignment) throw new ApiError(404, "Assignment not found");
+  if (String(assignment.createdBy) !== teacherId) throw new ApiError(403, "Forbidden");
+  if (data.score !== undefined) {
+    submission.marks = data.score;
+    submission.status = data.published ? "PUBLISHED" : "GRADED";
+  }
+  if (data.feedback !== undefined) submission.feedback = data.feedback;
+  if (data.requestResubmission) {
+    submission.status = "RETURNED";
+  }
+  await submission.save();
+  await notify(String(submission.studentId), "TEACHER_FEEDBACK", "Assignment feedback", `Feedback available for "${assignment.title}".`);
+  return submission;
+}
+
+export async function studentAssignments(studentId: string, query: { page?: number; limit?: number }): Promise<unknown> {
+  const page = query.page || 1;
+  const limit = query.limit || 10;
+  const filter: Record<string, unknown> = { studentIds: studentId, deletedAt: null, status: { $in: ["ASSIGNED", "OPEN"] } };
+  const total = await Assignment.countDocuments(filter);
+  const data = await Assignment.find(filter).sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit).lean();
+  const enriched = [];
+  for (const a of data) {
+    const submission = await AssignmentSubmission.findOne({ assignmentId: a._id, studentId }).lean();
+    enriched.push({ assignment: a, submission });
+  }
+  return { data: enriched, total, page, limit, pages: Math.ceil(total / limit) };
+}
+
+export async function submitAssignment(assignmentId: string, studentId: string, data: { content?: string; files?: string[] }): Promise<unknown> {
+  const assignment = await Assignment.findOne({ _id: assignmentId, deletedAt: null });
+  if (!assignment) throw new ApiError(404, "Assignment not found");
+  if (!assignment.studentIds.some((s) => String(s) === studentId)) throw new ApiError(403, "Assignment not assigned to you");
+  const existing = await AssignmentSubmission.findOne({ assignmentId, studentId });
+  if (existing) {
+    existing.content = data.content || existing.content;
+    if (data.files) existing.files = data.files;
+    existing.submittedAt = new Date();
+    existing.isDraft = false;
+    existing.status = existing.status === "RETURNED" ? "RESUBMITTED" : "SUBMITTED";
+    await existing.save();
+    await notify(studentId, "SUBMISSION_SUCCESS", "Assignment submitted", `You submitted "${assignment.title}".`);
+    return existing;
+  }
+  const submission = await AssignmentSubmission.create({
+    assignmentId,
+    studentId,
+    content: data.content || "",
+    files: data.files || [],
+    submittedAt: new Date(),
+    isDraft: false,
+    status: "SUBMITTED",
+    teacherId: assignment.createdBy,
+  });
+  await notify(studentId, "SUBMISSION_SUCCESS", "Assignment submitted", `You submitted "${assignment.title}".`);
+  return submission;
+}

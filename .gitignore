@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+coverage/
+
+# Environment & secrets
+.env
+.env.local
+.env.*.local
+server/.env
+client/.env
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor / IDE
+.vscode/
+.idea/
+
+# Misc
+*.tsbuildinfo
+.turbo/
