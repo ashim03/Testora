@@ -15,6 +15,15 @@ export interface IAssignment extends Document {
   maxMarks: number;
   attachments: string[];
   status: AssignmentStatus;
+  courseId?: Types.ObjectId | null;
+  moduleId?: Types.ObjectId | null;
+  chapterId?: Types.ObjectId | null;
+  lessonId?: Types.ObjectId | null;
+  submissionType: "TEXT" | "FILE" | "TEXT_AND_FILE" | "LINK" | "AUDIO_VIDEO";
+  allowedFileTypes: string[];
+  requiresAttachment: boolean;
+  allowResubmission: boolean;
+  published: boolean;
   deletedAt?: Date | null;
   createdAt: Date;
   updatedAt: Date;
@@ -34,12 +43,26 @@ const schema = new mongoose.Schema(
     maxMarks: { type: Number, default: 50 },
     attachments: { type: [String], default: [] },
     status: { type: String, enum: ["DRAFT", "ASSIGNED", "OPEN", "CLOSED"], default: "DRAFT" },
+    courseId: { type: mongoose.Schema.Types.ObjectId, ref: "Course", default: null, index: true },
+    moduleId: { type: mongoose.Schema.Types.ObjectId, ref: "CourseModule", default: null },
+    chapterId: { type: mongoose.Schema.Types.ObjectId, ref: "CourseChapter", default: null },
+    lessonId: { type: mongoose.Schema.Types.ObjectId, ref: "Lesson", default: null },
+    submissionType: {
+      type: String,
+      enum: ["TEXT", "FILE", "TEXT_AND_FILE", "LINK", "AUDIO_VIDEO"],
+      default: "TEXT",
+    },
+    allowedFileTypes: { type: [String], default: [] },
+    requiresAttachment: { type: Boolean, default: false },
+    allowResubmission: { type: Boolean, default: true },
+    published: { type: Boolean, default: false },
     deletedAt: { type: Date, default: null },
   },
   { timestamps: true },
 );
 
 schema.index({ createdBy: 1, status: 1 });
+schema.index({ courseId: 1, status: 1 });
 
 export const Assignment: Model<IAssignment> = mongoose.model<IAssignment>(
   "Assignment",
@@ -63,10 +86,15 @@ export interface IAssignmentSubmission extends Document {
   files: string[];
   submittedAt?: Date | null;
   marks?: number | null;
+  maxMarks?: number | null;
   feedback?: string | null;
+  strengths?: string[];
+  improvements?: string[];
   isDraft?: boolean;
   status: SubmissionStatus;
   returnReason?: string | null;
+  gradedBy?: Types.ObjectId | null;
+  gradedAt?: Date | null;
   published?: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -81,7 +109,10 @@ const submissionSchema = new mongoose.Schema(
     files: { type: [String], default: [] },
     submittedAt: { type: Date, default: null },
     marks: { type: Number, default: null },
+    maxMarks: { type: Number, default: null },
     feedback: { type: String, default: null },
+    strengths: { type: [String], default: [] },
+    improvements: { type: [String], default: [] },
     isDraft: { type: Boolean, default: true },
     status: {
       type: String,
@@ -98,6 +129,8 @@ const submissionSchema = new mongoose.Schema(
       index: true,
     },
     submittedReason: { type: String, default: null },
+    gradedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
+    gradedAt: { type: Date, default: null },
     published: { type: Boolean, default: false },
   },
   { timestamps: true },

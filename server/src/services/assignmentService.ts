@@ -71,12 +71,84 @@ export async function getAssignment(id: string, teacherId: string, studentId?: s
   return assignment;
 }
 
-export async function listSubmission(constantUnused: string, query: { page?: number; limit?: number; status?: string; sort?: string }, teacherId: string): Promise<unknown> {
+export async function updateAssignment(
+  id: string,
+  data: Record<string, unknown>,
+  actor: { id: string; role: string },
+): Promise<unknown> {
+  const assignment = await Assignment.findOne({ _id: id, deletedAt: null });
+  if (!assignment) throw new ApiError(404, "Assignment not found");
+  if (String(assignment.createdBy) !== actor.id) throw new ApiError(403, "Forbidden");
+  Object.assign(assignment, data);
+  if (data.studentIds || data.batchIds) {
+    const studentIds = new Set<string>();
+    for (const sid of (data.studentIds as string[]) || assignment.studentIds || []) studentIds.add(String(sid));
+    for (const batchId of (data.batchIds as string[]) || assignment.batchIds || []) {
+      const batch = await Batch.findById(batchId);
+      if (batch) batch.studentIds.forEach((s) => studentIds.add(String(s)));
+    }
+    assignment.studentIds = [...studentIds] as unknown as Types.ObjectId[];
+  }
+  await assignment.save();
+  await audit("UPDATE_ASSIGNMENT", {
+    actorId: actor.id,
+    actorRole: actor.role,
+    entityType: "Assignment",
+    entityId: String(assignment._id),
+    after: { title: assignment.title },
+  });
+  return assignment;
+}
+
+export async function deleteAssignment(id: string, actor: { id: string; role: string }): Promise<void> {
+  const assignment = await Assignment.findOne({ _id: id, deletedAt: null });
+  if (!assignment) throw new ApiError(404, "Assignment not found");
+  if (String(assignment.createdBy) !== actor.id) throw new ApiError(403, "Forbidden");
+  assignment.deletedAt = new Date();
+  assignment.status = "CLOSED";
+  await assignment.save();
+  await audit("DELETE_ASSIGNMENT", {
+    actorId: actor.id,
+    actorRole: actor.role,
+    entityType: "Assignment",
+    entityId: String(assignment._id),
+  });
+}
+
+export async function publishAssignment(id: string, actor: { id: string; role: string }): Promise<unknown> {
+  const assignment = await Assignment.findOne({ _id: id, deletedAt: null });
+  if (!assignment) throw new ApiError(404, "Assignment not found");
+  if (String(assignment.createdBy) !== actor.id) throw new ApiError(403, "Forbidden");
+  assignment.published = true;
+  assignment.status = "OPEN";
+  await assignment.save();
+  for (const sid of assignment.studentIds) {
+    await notify(String(sid), "ASSIGNMENT_CREATED", "Assignment published", `"${assignment.title}" is now open for submission.`, { assignmentId: String(assignment._id), dueAt: assignment.dueAt });
+  }
+  await audit("PUBLISH_ASSIGNMENT", {
+    actorId: actor.id,
+    actorRole: actor.role,
+    entityType: "Assignment",
+    entityId: String(assignment._id),
+    after: { status: "OPEN", published: true },
+  });
+  return assignment;
+}
+
+export async function listSubmission(assignmentId: string, query: { page?: number; limit?: number; status?: string; sort?: string }, teacherId: string): Promise<unknown> {
   const page = query.page || 1;
   const limit = query.limit || 10;
-  const assignments = await Assignment.find({ createdBy: teacherId, deletedAt: null }).select("_id").lean();
-  const ids = assignments.map((a) => a._id);
-  const filter: Record<string, unknown> = { assignmentId: { $in: ids } };
+  let filter: Record<string, unknown> = {};
+  if (assignmentId) {
+    const assignment = await Assignment.findOne({ _id: assignmentId, deletedAt: null });
+    if (!assignment) throw new ApiError(404, "Assignment not found");
+    if (String(assignment.createdBy) !== teacherId) throw new ApiError(403, "Forbidden");
+    filter.assignmentId = assignment._id;
+  } else {
+    const assignments = await Assignment.find({ createdBy: teacherId, deletedAt: null }).select("_id").lean();
+    const ids = assignments.map((a) => a._id);
+    filter = { assignmentId: { $in: ids } };
+  }
   if (query.status) filter.status = query.status;
   const total = await AssignmentSubmission.countDocuments(filter);
   const sort = parseSort(query.sort || "-createdAt", ["createdAt", "marks", "status"]);
@@ -94,7 +166,7 @@ export async function getSubmission(id: string, teacherId: string): Promise<unkn
 
 export async function gradeSubmission(
   submissionId: string,
-  data: { score?: number; feedback?: string; requestResubmission?: boolean; published?: boolean },
+  data: { score?: number; feedback?: string; requestResubmission?: boolean; published?: boolean; strengths?: string[]; improvements?: string[] },
   teacherId: string,
 ): Promise<unknown> {
   const submission = await AssignmentSubmission.findById(submissionId);
@@ -104,14 +176,31 @@ export async function gradeSubmission(
   if (String(assignment.createdBy) !== teacherId) throw new ApiError(403, "Forbidden");
   if (data.score !== undefined) {
     submission.marks = data.score;
+    submission.maxMarks = assignment.maxMarks;
     submission.status = data.published ? "PUBLISHED" : "GRADED";
   }
   if (data.feedback !== undefined) submission.feedback = data.feedback;
+  if (data.strengths !== undefined) submission.strengths = data.strengths;
+  if (data.improvements !== undefined) submission.improvements = data.improvements;
   if (data.requestResubmission) {
     submission.status = "RETURNED";
   }
+  submission.gradedBy = teacherId as unknown as Types.ObjectId;
+  submission.gradedAt = new Date();
   await submission.save();
-  await notify(String(submission.studentId), "TEACHER_FEEDBACK", "Assignment feedback", `Feedback available for "${assignment.title}".`);
+  await notify(String(submission.studentId), "ASSIGNMENT_GRADED", "Assignment graded", `Your submission for "${assignment.title}" has been graded.`, {
+    assignmentId: String(assignment._id),
+    submissionId: String(submission._id),
+    marks: submission.marks,
+    maxMarks: assignment.maxMarks,
+  });
+  await audit("GRADE_ASSIGNMENT_SUBMISSION", {
+    actorId: teacherId,
+    actorRole: "TEACHER",
+    entityType: "AssignmentSubmission",
+    entityId: String(submission._id),
+    after: { marks: submission.marks, status: submission.status },
+  });
   return submission;
 }
 

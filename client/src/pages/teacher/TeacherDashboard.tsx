@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-import { Users, Layers, FileText, ClipboardList, Clock, CheckCircle2, PenLine, FolderOpen, ArrowRight, Briefcase } from "lucide-react";
+import { Users, Layers, FileText, ClipboardList, Clock, CheckCircle2, PenLine, FolderOpen, ArrowRight, Briefcase, BookOpen } from "lucide-react";
 import { apiGet } from "../../api/client";
 import { useAuthStore } from "../../store/auth";
 import { useBrandingStore } from "../../store/branding";
@@ -15,6 +15,7 @@ interface TeacherDashboardData {
   totalAssignments: number;
   pendingGrading: number;
   gradedAttempts: number;
+  courseCount: number;
 }
 
 export function TeacherDashboard() {
@@ -30,9 +31,9 @@ export function TeacherDashboard() {
   if (isError || !data) return <ErrorState message={error instanceof Error ? error.message : undefined} />;
 
   const cards = [
-    { label: "Students", value: data.studentCount, icon: Users, color: "text-brand-600", to: "/teacher/students" },
-    { label: "Batches", value: data.activeBatches, icon: Layers, color: "text-violet-600", to: "/teacher/batches" },
-    { label: "Exams", value: data.totalExams, icon: FileText, color: "text-accent-600", to: "/teacher/exams" },
+    { label: "Courses", value: data.courseCount, icon: BookOpen, color: "text-brand-600", to: "/teacher/courses" },
+    { label: "Students", value: data.studentCount, icon: Users, color: "text-violet-600", to: "/teacher/students" },
+    { label: "Batches", value: data.activeBatches, icon: Layers, color: "text-accent-600", to: "/teacher/batches" },
     { label: "Assignments", value: data.totalAssignments, icon: ClipboardList, color: "text-emerald-600", to: "/teacher/assignments" },
     { label: "Pending grading", value: data.pendingGrading, icon: Clock, color: "text-amber-600", to: "/teacher/submissions" },
     { label: "Graded", value: data.gradedAttempts, icon: CheckCircle2, color: "text-rose-600", to: "/teacher/results" },
@@ -81,6 +82,7 @@ export function TeacherDashboard() {
         <Card>
           <CardHeader><CardTitle className="text-base">Quick actions</CardTitle></CardHeader>
           <CardContent className="grid gap-2 sm:grid-cols-2">
+            <QuickLink to="/teacher/courses" icon={BookOpen} label="Manage course content" count={data.courseCount} />
             <QuickLink to="/teacher/exams" icon={FileText} label="Build an exam" />
             <QuickLink to="/teacher/questions" icon={FolderOpen} label="Manage question bank" />
             <QuickLink to="/teacher/submissions" icon={PenLine} label="Grade submissions" count={data.pendingGrading} />

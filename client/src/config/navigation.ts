@@ -78,6 +78,7 @@ const teacherNav: NavGroup[] = [
   {
     label: "Content",
     items: [
+      { label: "My courses", to: "/teacher/courses", icon: BookOpen },
       { label: "Question bank", to: "/teacher/questions", icon: FolderOpen },
       { label: "Examinations", to: "/teacher/exams", icon: FileText },
       { label: "Assignments", to: "/teacher/assignments", icon: ClipboardList },
@@ -93,6 +94,7 @@ const studentNav: NavGroup[] = [
   {
     label: "Learning",
     items: [
+      { label: "My courses", to: "/student/courses", icon: BookOpen },
       { label: "My tests", to: "/student/tests", icon: ClipboardList },
       { label: "Practice tests", to: "/student/practice", icon: PenSquare },
       { label: "Assignments", to: "/student/assignments", icon: ClipboardPen },

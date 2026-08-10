@@ -297,15 +297,14 @@ function NotificationsDropdown() {
   const user = useAuthStore((s) => s.user);
   const navigate = useNavigate();
   const home = homePathForRole(user?.role);
-  const isStudent = user?.role === "STUDENT";
 
   const { data, isLoading } = useQuery({
     queryKey: ["header", "notifications"],
     queryFn: async () => {
-      const res = await apiGet<NotificationRow[]>("/student/notifications", { limit: 5 });
+      const res = await apiGet<NotificationRow[]>("/notifications", { limit: 5 });
       return res.data ?? [];
     },
-    enabled: isStudent,
+    enabled: !!user,
   });
 
   const unread = data?.filter((n) => !n.read).length ?? 0;

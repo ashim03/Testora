@@ -30,6 +30,17 @@ export const deleteQuestion = asyncHandler(async (req: Request, res: Response) =
   res.json({ success: true, message: "Question deleted" });
 });
 
+export const duplicateQuestion = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.user) throw new ApiError(401, "Authentication required");
+  const data = await questionService.duplicateQuestion(String(req.params.id), req.user);
+  res.status(201).json({ success: true, message: "Question duplicated", data });
+});
+
+export const getQuestionPreview = asyncHandler(async (req: Request, res: Response) => {
+  const data = await questionService.getQuestionPreview(String(req.params.id));
+  res.json({ success: true, message: "Question preview", data });
+});
+
 export const listPassages = asyncHandler(async (req: Request, res: Response) => {
   const data = await questionService.listPassages({ search: req.query.search as string | undefined });
   res.json({ success: true, message: "Passages", data });
@@ -51,5 +62,9 @@ function queryOf(req: Request) {
     type: (req.query.type as string) || "",
     difficulty: (req.query.difficulty as string) || "",
     ownerId: (req.query.ownerId as string) || "",
+    courseId: (req.query.courseId as string) || "",
+    moduleId: (req.query.moduleId as string) || "",
+    chapterId: (req.query.chapterId as string) || "",
+    topic: (req.query.topic as string) || "",
   };
 }

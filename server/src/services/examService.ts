@@ -227,7 +227,7 @@ export async function startAttempt(examId: string, studentId: string): Promise<u
       await ExamAttempt.updateOne({ _id: last._id }, { $set: { status: "SUBMITTED", submittedAt: new Date(), receipt: generateReceipt() } });
       await ExamAssignment.updateOne({ examId, studentId }, { $set: { status: "COMPLETED" } });
       await afterSubmit(String(last._id));
-      throw new ApiError(400, "Time expired and the attempt was auto-submitted");
+      return { attempt: last, exam, autoSubmitted: true, resuming: false };
     }
     return { attempt: last, exam, resuming: true };
   }

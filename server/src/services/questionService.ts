@@ -12,6 +12,10 @@ export interface QuestionQuery {
   type?: string;
   difficulty?: string;
   ownerId?: string;
+  courseId?: string;
+  moduleId?: string;
+  chapterId?: string;
+  topic?: string;
 }
 
 export async function createQuestion(
@@ -42,9 +46,16 @@ export async function listQuestions(query: QuestionQuery): Promise<{
   if (query.type) filter.type = query.type;
   if (query.difficulty) filter.difficulty = query.difficulty;
   if (query.ownerId) filter.createdBy = query.ownerId;
+  if (query.courseId) filter.courseId = query.courseId;
+  if (query.moduleId) filter.moduleId = query.moduleId;
+  if (query.chapterId) filter.chapterId = query.chapterId;
+  if (query.topic) {
+    const re = new RegExp(query.topic.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
+    filter.topic = re;
+  }
   if (query.search) {
     const re = new RegExp(query.search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
-    filter.$or = [{ title: re }, { tags: re }];
+    filter.$or = [{ title: re }, { tags: re }, { topic: re }];
   }
   const sort = parseSort(query.sort || "-createdAt", ["createdAt", "title", "marks", "difficulty"]);
   const total = await Question.countDocuments(filter);
@@ -77,6 +88,33 @@ export async function deleteQuestion(id: string, actor: { id: string; role: stri
   }
   question.deletedAt = new Date();
   await question.save();
+}
+
+export async function duplicateQuestion(id: string, actor: { id: string; role: string }): Promise<unknown> {
+  const question = await Question.findOne({ _id: id, deletedAt: null });
+  if (!question) throw new ApiError(404, "Question not found");
+  if (String(question.createdBy) !== actor.id && actor.role !== "SUPER_ADMIN") {
+    throw new ApiError(403, "You can only duplicate your own questions");
+  }
+  const data = question.toObject();
+  delete data._id;
+  delete data.__v;
+  delete data.createdAt;
+  delete data.updatedAt;
+  const copy = await Question.create({
+    ...data,
+    title: `${question.title} (copy)`,
+    createdBy: actor.id,
+    deletedAt: null,
+  });
+  await logActivity(actor.id, "DUPLICATE_QUESTION", "Question", copy._id, { sourceId: question._id });
+  return copy;
+}
+
+export async function getQuestionPreview(id: string): Promise<unknown> {
+  const question = await Question.findOne({ _id: id, deletedAt: null }).populate("passageId");
+  if (!question) throw new ApiError(404, "Question not found");
+  return question;
 }
 
 export async function createPassage(data: Record<string, unknown>, actorId: string): Promise<unknown> {

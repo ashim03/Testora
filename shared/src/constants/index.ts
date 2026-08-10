@@ -151,7 +151,34 @@ export const NOTIFICATION_TYPES = [
   "TEACHER_FEEDBACK",
   "PASSWORD_RESET",
   "BATCH_ASSIGNED",
+  "COURSE_ENROLLED",
+  "COURSE_CONTENT_PUBLISHED",
+  "COURSE_ANNOUNCEMENT",
+  "ASSIGNMENT_GRADED",
+  "QUIZ_AVAILABLE",
+  "EXAM_SCHEDULED",
+  "SUBMISSION_RECEIVED",
+  "CONTENT_VIEWED",
 ] as const;
+
+export const COURSE_LEVELS = ["BEGINNER", "INTERMEDIATE", "ADVANCED", "ALL_LEVELS"] as const;
+export type CourseLevel = (typeof COURSE_LEVELS)[number];
+
+export const LESSON_TYPES = ["VIDEO", "PDF", "DOCUMENT", "PRESENTATION", "NOTES", "LINK", "TEXT", "QUIZ", "ASSIGNMENT"] as const;
+export type LessonType = (typeof LESSON_TYPES)[number];
+
+export const MATERIAL_TYPES = ["VIDEO", "PDF", "DOCUMENT", "PRESENTATION", "NOTES", "LINK", "AUDIO"] as const;
+export type MaterialType = (typeof MATERIAL_TYPES)[number];
+
+export const ASSIGNMENT_SUBMISSION_TYPES = ["TEXT", "FILE", "TEXT_AND_FILE", "LINK", "AUDIO_VIDEO"] as const;
+export type AssignmentSubmissionType = (typeof ASSIGNMENT_SUBMISSION_TYPES)[number];
+
+export const ASSIGNMENT_STATUSES = ["DRAFT", "ASSIGNED", "OPEN", "CLOSED"] as const;
+
+export const SUBMISSION_STATUSES = ["PENDING", "SUBMITTED", "UNDER_REVIEW", "GRADED", "RETURNED", "RESUBMITTED", "PUBLISHED"] as const;
+
+export const PROGRESS_SOURCES = ["LESSON_COMPLETED", "VIDEO_WATCHED", "MATERIAL_VIEWED", "ASSIGNMENT_SUBMITTED", "QUIZ_COMPLETED", "EXAM_COMPLETED"] as const;
+export type ProgressSource = (typeof PROGRESS_SOURCES)[number];
 
 export const PRACTICE_DISCLAIMERS = {
   IELTS: "This is a practice assessment and not an official IELTS result.",

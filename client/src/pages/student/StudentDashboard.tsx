@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import {
-  FileText, ClipboardList, CheckCircle2, PenSquare, Target, User, ArrowRight, CalendarDays,
+  FileText, ClipboardList, CheckCircle2, PenSquare, Target, ArrowRight, CalendarDays, BookOpen,
 } from "lucide-react";
 import { apiGet } from "../../api/client";
 import { useAuthStore } from "../../store/auth";
@@ -22,6 +22,8 @@ interface DashboardData {
   pendingAssignments: number;
   recentResults: Array<{ _id: string; examTitle: string; category: string; practiceBand: number | null; estimatedPteScore: number | null; percentage: number | null; finalScore: number | null; maxScore: number | null }>;
   currentBatch: { _id: string; name: string; courseId: { name?: string } | null } | null;
+  courseCount: number;
+  courseProgress: Array<{ courseId: string; progressPercent: number; completedLessonCount: number; totalLessonCount: number }>;
 }
 
 export function StudentDashboard() {
@@ -45,8 +47,8 @@ export function StudentDashboard() {
   const countdown = profile?.preferredTestDate ? daysUntil(profile.preferredTestDate) : null;
 
   const cards = [
+    { label: "My courses", value: data.courseCount, icon: BookOpen, to: "/student/courses" },
     { label: "Available tests", value: data.availableExams, icon: FileText, to: "/student/tests" },
-    { label: "Assigned", value: data.totalAssignedExams, icon: ClipboardList, to: "/student/tests" },
     { label: "Completed", value: data.completedExams, icon: CheckCircle2, to: "/student/results" },
     { label: "Assignments", value: data.pendingAssignments, icon: ClipboardList, to: "/student/assignments" },
   ];
@@ -147,10 +149,10 @@ export function StudentDashboard() {
         <Card>
           <CardHeader><CardTitle className="text-base">Quick actions</CardTitle></CardHeader>
           <CardContent className="grid gap-2">
+            <QuickAction to="/student/courses" icon={BookOpen} label="Continue my courses" count={data.courseCount} />
             <QuickAction to="/student/tests" icon={FileText} label="Take a test" />
             <QuickAction to="/student/practice" icon={PenSquare} label="Practice questions" />
             <QuickAction to="/student/assignments" icon={ClipboardList} label="Pending assignments" count={data.pendingAssignments} />
-            <QuickAction to="/student/profile" icon={User} label="Update profile" />
           </CardContent>
         </Card>
       </div>

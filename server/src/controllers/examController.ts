@@ -106,6 +106,24 @@ export const getAssignment = asyncHandler(async (req: Request, res: Response) =>
   res.json({ success: true, message: "Assignment", data });
 });
 
+export const updateAssignment = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.user) throw new ApiError(401, "Authentication required");
+  const data = await assignmentService.updateAssignment(String(req.params.id), req.body, req.user);
+  res.json({ success: true, message: "Assignment updated", data });
+});
+
+export const deleteAssignment = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.user) throw new ApiError(401, "Authentication required");
+  await assignmentService.deleteAssignment(String(req.params.id), req.user);
+  res.json({ success: true, message: "Assignment deleted" });
+});
+
+export const publishAssignment = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.user) throw new ApiError(401, "Authentication required");
+  const data = await assignmentService.publishAssignment(String(req.params.id), req.user);
+  res.json({ success: true, message: "Assignment published", data });
+});
+
 export const listAssignmentSubmissions = asyncHandler(async (req: Request, res: Response) => {
   if (!req.user) throw new ApiError(401, "Authentication required");
   const result = await assignmentService.listSubmission(String(req.params.assignmentId) || "", queryOf(req), req.user.id);

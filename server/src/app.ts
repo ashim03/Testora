@@ -11,8 +11,10 @@ import teacherRoutes from "./routes/teacherRoutes";
 import questionRoutes from "./routes/questionRoutes";
 import examRoutes from "./routes/examRoutes";
 import studentRoutes from "./routes/studentRoutes";
+import courseRoutes from "./routes/courseRoutes";
 import mediaRoutes from "./routes/mediaRoutes";
 import brandingRoutes from "./routes/brandingRoutes";
+import notificationRoutes from "./routes/notificationRoutes";
 import { apiLimiter } from "./middleware/rateLimit";
 import { sanitizeMongoQuery, sanitizePagination } from "./middleware/sanitize";
 import { notFound, errorHandler } from "./middleware/error";
@@ -56,8 +58,10 @@ export function createApp(): Application {
   api.use("/questions", questionRoutes);
   api.use("/exams", examRoutes);
   api.use("/student", studentRoutes);
+  api.use("/courses", courseRoutes);
   api.use("/media", mediaRoutes);
   api.use("/branding", brandingRoutes);
+  api.use("/notifications", notificationRoutes);
 
   app.use("/api", api);
 

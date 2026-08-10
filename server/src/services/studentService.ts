@@ -1,14 +1,15 @@
-import { Batch, Exam, ExamAttempt, ExamAssignment, AssignmentSubmission, Result, TeacherStudentAssignment, StudentProfile, Feedback, Notification } from "../models";
+import { Batch, Exam, ExamAttempt, ExamAssignment, AssignmentSubmission, Result, TeacherStudentAssignment, StudentProfile, Feedback, Notification, CourseEnrollment } from "../models";
 import { ApiError } from "../utils/helpers";
 
 export async function studentDashboard(studentId: string): Promise<unknown> {
-  const [profile, assignment, batches, exams, pendingAssignments, results] = await Promise.all([
+  const [profile, assignment, batches, exams, pendingAssignments, results, enrollments] = await Promise.all([
     StudentProfile.findOne({ userId: studentId }).lean(),
     TeacherStudentAssignment.findOne({ studentId, status: "ACTIVE", endedAt: null }).populate("teacherId", "firstName lastName email").lean(),
     Batch.find({ studentIds: studentId, archived: false }).populate("courseId").lean(),
     ExamAssignment.find({ studentId }).lean(),
     AssignmentSubmission.countDocuments({ studentId, status: "SUBMITTED" }),
     Result.find({ studentId, published: true }).sort({ createdAt: -1 }).limit(10).lean(),
+    CourseEnrollment.find({ studentId, status: "ACTIVE" }).select("courseId progressPercent completedLessonCount totalLessonCount").lean(),
   ]);
   const examIds = [...new Set(exams.map((e) => String(e.examId)))];
   const examsDetail = await Exam.find({ _id: { $in: examIds }, deletedAt: null, status: { $in: ["PUBLISHED", "SCHEDULED", "COMPLETED"] } }).lean();
@@ -33,6 +34,8 @@ export async function studentDashboard(studentId: string): Promise<unknown> {
     recentResults,
     attemptCount: attempts.length,
     currentBatch: batches[0] || null,
+    courseCount: enrollments.length,
+    courseProgress: enrollments,
   };
 }
 

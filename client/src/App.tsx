@@ -23,6 +23,8 @@ const AuditLogsPage = lazy(() => import("./pages/admin/AuditLogsPage").then((m) 
 const AdminSettingsPage = lazy(() => import("./pages/admin/SettingsPage").then((m) => ({ default: m.SettingsPage })));
 
 const TeacherDashboard = lazy(() => import("./pages/teacher/TeacherDashboard").then((m) => ({ default: m.TeacherDashboard })));
+const TeacherCourses = lazy(() => import("./pages/teacher/TeacherCourses").then((m) => ({ default: m.TeacherCourses })));
+const TeacherCourseDetail = lazy(() => import("./pages/teacher/TeacherCourseDetail").then((m) => ({ default: m.TeacherCourseDetail })));
 const TeacherExams = lazy(() => import("./pages/teacher/TeacherExams").then((m) => ({ default: m.TeacherExams })));
 const TeacherQuestions = lazy(() => import("./pages/teacher/TeacherQuestions").then((m) => ({ default: m.TeacherQuestions })));
 const TeacherResults = lazy(() => import("./pages/teacher/TeacherResults").then((m) => ({ default: m.TeacherResults })));
@@ -33,6 +35,8 @@ const TeacherSubmissions = lazy(() => import("./pages/teacher/TeacherSubmissions
 const TeacherReportsPage = lazy(() => import("./pages/teacher/TeacherReports").then((m) => ({ default: m.TeacherReports })));
 
 const StudentDashboard = lazy(() => import("./pages/student/StudentDashboard").then((m) => ({ default: m.StudentDashboard })));
+const StudentCourses = lazy(() => import("./pages/student/StudentCourses").then((m) => ({ default: m.StudentCourses })));
+const StudentCourseLearn = lazy(() => import("./pages/student/StudentCourseLearn").then((m) => ({ default: m.StudentCourseLearn })));
 const StudentExams = lazy(() => import("./pages/student/StudentExams").then((m) => ({ default: m.StudentExams })));
 const StudentTests = lazy(() => import("./pages/student/StudentTests").then((m) => ({ default: m.StudentTests })));
 const StudentPractice = lazy(() => import("./pages/student/StudentPractice").then((m) => ({ default: m.StudentPractice })));
@@ -97,6 +101,8 @@ export function App() {
         <Route path="/admin/notifications" element={withLayout("SUPER_ADMIN", <NotificationsPage />)} />
 
         <Route path="/teacher" element={withLayout("TEACHER", <TeacherDashboard />)} />
+        <Route path="/teacher/courses" element={withLayout("TEACHER", <TeacherCourses />)} />
+        <Route path="/teacher/courses/:id" element={withLayout("TEACHER", <TeacherCourseDetail />)} />
         <Route path="/teacher/students" element={withLayout("TEACHER", <TeacherStudents />)} />
         <Route path="/teacher/batches" element={withLayout("TEACHER", <TeacherBatches />)} />
         <Route path="/teacher/exams" element={withLayout("TEACHER", <TeacherExams />)} />
@@ -110,6 +116,8 @@ export function App() {
         <Route path="/teacher/notifications" element={withLayout("TEACHER", <NotificationsPage />)} />
 
         <Route path="/student" element={withLayout("STUDENT", <StudentDashboard />)} />
+        <Route path="/student/courses" element={withLayout("STUDENT", <StudentCourses />)} />
+        <Route path="/student/courses/:id" element={withLayout("STUDENT", <StudentCourseLearn />)} />
         <Route path="/student/tests" element={withLayout("STUDENT", <StudentTests />)} />
         <Route path="/student/exams" element={withLayout("STUDENT", <StudentExams />)} />
         <Route path="/student/practice" element={withLayout("STUDENT", <StudentPractice />)} />

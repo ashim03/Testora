@@ -24,6 +24,10 @@ export interface IQuestion extends Document {
   instructions: string;
   passage: string;
   passageId?: Types.ObjectId | null;
+  courseId?: Types.ObjectId | null;
+  moduleId?: Types.ObjectId | null;
+  chapterId?: Types.ObjectId | null;
+  topic?: string;
   audioUrl?: string | null;
   imageUrl?: string | null;
   videoUrl?: string | null;
@@ -69,6 +73,10 @@ const schema = new mongoose.Schema(
     instructions: { type: String, maxlength: 2000, default: "" },
     passage: { type: String, default: "" },
     passageId: { type: mongoose.Schema.Types.ObjectId, ref: "Passage", default: null },
+    courseId: { type: mongoose.Schema.Types.ObjectId, ref: "Course", default: null, index: true },
+    moduleId: { type: mongoose.Schema.Types.ObjectId, ref: "CourseModule", default: null, index: true },
+    chapterId: { type: mongoose.Schema.Types.ObjectId, ref: "CourseChapter", default: null, index: true },
+    topic: { type: String, default: "" },
     audioUrl: { type: String, default: null },
     imageUrl: { type: String, default: null },
     videoUrl: { type: String, default: null },

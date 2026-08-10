@@ -228,9 +228,11 @@ export async function publishResult(attemptId: string, actor: { id: string; role
 export async function reopenAttempt(attemptId: string, actor: { id: string; role: string }): Promise<unknown> {
   const attempt = await ExamAttempt.findById(attemptId);
   if (!attempt) throw new ApiError(404, "Attempt not found");
+  const exam = await Exam.findById(attempt.examId);
+  const durationSec = exam?.durationSec || 3600;
   attempt.status = "IN_PROGRESS";
   attempt.submittedAt = null;
-  attempt.expiresAt = new Date(Date.now() + 30 * 60 * 1000);
+  attempt.expiresAt = new Date(Date.now() + durationSec * 1000);
   await attempt.save();
   await audit("REOPEN_ATTEMPT", {
     actorId: actor.id,
