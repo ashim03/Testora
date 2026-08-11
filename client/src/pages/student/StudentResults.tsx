@@ -4,7 +4,7 @@ import { apiGet } from "../../api/client";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../components/ui/table";
-import { Pagination, TableEmptyState, TableSkeleton } from "../../components/ui/table-toolbar";
+import { Pagination, PanelEmptyState, TableSkeleton } from "../../components/ui/table-toolbar";
 import { ErrorState } from "../../components/ui/feedback";
 import { formatDate } from "../../utils";
 
@@ -46,7 +46,7 @@ export function StudentResults() {
         <CardHeader><CardTitle className="text-base">Published results</CardTitle></CardHeader>
         <CardContent className="p-0">
           {isLoading ? <TableSkeleton rows={6} /> : rows.length === 0 ? (
-            <TableEmptyState colSpan={6} title="No results yet" description="Published results will appear here." />
+            <PanelEmptyState title="No results yet" description="Published results will appear here." />
           ) : (
             <Table>
               <TableHeader>

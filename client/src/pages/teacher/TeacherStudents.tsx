@@ -9,7 +9,7 @@ import { Dialog, DialogClose, DialogContent, DialogFooter, DialogHeader, DialogT
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../components/ui/table";
-import { Pagination, TableEmptyState, TableSkeleton } from "../../components/ui/table-toolbar";
+import { Pagination, PanelEmptyState, TableSkeleton } from "../../components/ui/table-toolbar";
 import { ErrorState, Spinner } from "../../components/ui/feedback";
 import { Badge } from "../../components/ui/badge";
 import { formatDate, getErrorMessage } from "../../utils";
@@ -76,7 +76,7 @@ export function TeacherStudents() {
         <CardHeader><CardTitle className="text-base">Student list</CardTitle></CardHeader>
         <CardContent className="p-0">
           {isLoading ? <TableSkeleton rows={6} /> : rows.length === 0 ? (
-            <TableEmptyState colSpan={5} title="No students yet" description="Assigned students will appear here." />
+            <PanelEmptyState title="No students yet" description="Assigned students will appear here." />
           ) : (
             <Table>
               <TableHeader>

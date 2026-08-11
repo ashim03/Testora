@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { apiGet } from "../../api/client";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../components/ui/table";
-import { Pagination, TableEmptyState, TableSkeleton } from "../../components/ui/table-toolbar";
+import { Pagination, PanelEmptyState, TableSkeleton } from "../../components/ui/table-toolbar";
 import { ErrorState } from "../../components/ui/feedback";
 import { Badge } from "../../components/ui/badge";
 import { formatDateTime, titleCase } from "../../utils";
@@ -42,7 +42,7 @@ export function AuditLogsPage() {
         <CardHeader><CardTitle className="text-base">Audit trail</CardTitle></CardHeader>
         <CardContent className="p-0">
           {isLoading ? <TableSkeleton rows={10} /> : rows.length === 0 ? (
-            <TableEmptyState colSpan={5} title="No audit logs" />
+            <PanelEmptyState title="No audit logs" />
           ) : (
             <Table>
               <TableHeader>

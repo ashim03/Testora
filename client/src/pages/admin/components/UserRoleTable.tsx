@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogC
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "../../../components/ui/table";
-import { TableToolbar, Pagination, TableEmptyState, TableSkeleton } from "../../../components/ui/table-toolbar";
+import { TableToolbar, Pagination, PanelEmptyState, TableSkeleton } from "../../../components/ui/table-toolbar";
 import { Spinner } from "../../../components/ui/feedback";
 import { getErrorMessage, formatDate } from "../../../utils";
 
@@ -111,7 +111,7 @@ export function UserRoleTable({ role, title, basePath, resource }: { role: strin
           {listQuery.isLoading ? (
             <TableSkeleton rows={6} />
           ) : users.length === 0 && !listQuery.isLoading ? (
-            <TableEmptyState colSpan={6} title="No users found" />
+            <PanelEmptyState title="No users found" />
           ) : (
             <Table>
               <TableHeader>

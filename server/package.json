@@ -10,6 +10,8 @@
     "start": "node dist/server.js",
     "seed": "tsx src/seed/seed.ts",
     "seed:reset": "tsx src/seed/seed.ts --reset",
+    "seed:qa": "tsx src/seed/qaSeed.ts",
+    "qa:audit": "tsx src/scripts/qaAudit.ts",
     "lint": "eslint src",
     "lint:fix": "eslint src --fix",
     "test": "vitest run"

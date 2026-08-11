@@ -76,3 +76,11 @@ export function TableEmptyState({ colSpan, title, description }: { colSpan: numb
     </tr>
   );
 }
+
+export function PanelEmptyState({ title, description }: { title?: string; description?: string }) {
+  return (
+    <div className="p-4">
+      <EmptyState title={title || "No records found"} description={description || "Try adjusting your search or filters."} />
+    </div>
+  );
+}

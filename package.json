@@ -25,11 +25,14 @@
     "format": "prettier --write \"**/*.{ts,tsx,json,md}\"",
     "typecheck": "npm run typecheck -w shared && npm run typecheck -w server && npm run typecheck -w client",
     "seed": "npm run seed -w server",
-    "seed:reset": "npm run seed:reset -w server"
+    "seed:reset": "npm run seed:reset -w server",
+    "seed:qa": "npm run seed:qa -w server",
+    "qa:audit": "npm run qa:audit -w server"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "concurrently": "^9.1.0",
+    "playwright": "^1.62.1",
     "prettier": "^3.3.3"
   },
   "engines": {
@@ -38,5 +41,8 @@
   "allowScripts": {
     "esbuild@0.28.1": true,
     "esbuild@0.21.5": true
+  },
+  "dependencies": {
+    "react-router-dom": "^7.18.2"
   }
 }

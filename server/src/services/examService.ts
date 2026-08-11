@@ -402,7 +402,16 @@ export async function saveAnswers(
     const answered = a.answered !== false && a.answer !== null && a.answer !== "" && a.answer !== undefined;
     await ExamAnswer.updateOne(
       { attemptId, questionId: a.questionId },
-      { $set: { answer: a.answer, answered } },
+      {
+        $set: { answer: a.answer, answered },
+        $setOnInsert: {
+          attemptId,
+          examId: attempt.examId,
+          studentId,
+          questionId: a.questionId,
+          sectionIndex: 0,
+        },
+      },
       { upsert: true },
     );
   }

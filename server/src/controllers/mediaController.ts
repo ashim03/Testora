@@ -5,7 +5,7 @@ import { getMediaService, localAudioPath } from "../services/mediaService";
 import { ApiError, asyncHandler } from "../utils/helpers";
 import { mimeToKind } from "../middleware/upload";
 import { config } from "../config";
-import { MediaAsset, Question, Exam, ExamAttempt, ExamAssignment } from "../models";
+import { MediaAsset, Question, Exam, ExamAttempt, ExamAssignment, ExamAnswer } from "../models";
 
 export const uploadFile = asyncHandler(async (req: Request, res: Response) => {
   if (!req.user) throw new ApiError(401, "Authentication required");
@@ -139,6 +139,9 @@ async function canAccessAudio(assetId: string, userId: string, role: string): Pr
   if (!asset) return false;
   if (String(asset.uploadedBy) === String(userId)) return true;
 
+  const answerAudioAllowed = await canAccessAnswerAudio(assetId, asset.url || "", userId, role);
+  if (answerAudioAllowed) return true;
+
   const questions = await Question.find({ audioAssetId: assetId, deletedAt: null }).select("_id").lean();
   if (questions.length === 0) return false;
   const qids = questions.map((q) => q._id);
@@ -155,4 +158,36 @@ async function canAccessAudio(assetId: string, userId: string, role: string): Pr
     ExamAssignment.exists({ studentId: userId, examId: { $in: examIds } }),
   ]);
   return Boolean(hasAttempt || hasAssignment);
+}
+
+async function canAccessAnswerAudio(assetId: string, assetUrl: string, userId: string, role: string): Promise<boolean> {
+  const localUrl = `/media/audio/${assetId}/file`;
+  const answers = await ExamAnswer.find({
+    $or: [
+      { "answer.assetId": assetId },
+      { "answer.url": localUrl },
+      ...(assetUrl && assetUrl !== localUrl ? [{ "answer.url": assetUrl }] : []),
+    ],
+  })
+    .select("attemptId examId studentId")
+    .lean();
+
+  if (answers.length === 0) return false;
+
+  if (role === "STUDENT") {
+    return answers.some((answer) => String(answer.studentId) === String(userId));
+  }
+
+  if (role !== "TEACHER") return false;
+
+  for (const answer of answers) {
+    const [createdByTeacher, assignedToTeacher, attemptOwnedByTeacher] = await Promise.all([
+      Exam.exists({ _id: answer.examId, createdBy: userId, deletedAt: null }),
+      ExamAssignment.exists({ examId: answer.examId, studentId: answer.studentId, teacherId: userId }),
+      ExamAttempt.exists({ _id: answer.attemptId, teacherId: userId }),
+    ]);
+    if (createdByTeacher || assignedToTeacher || attemptOwnedByTeacher) return true;
+  }
+
+  return false;
 }

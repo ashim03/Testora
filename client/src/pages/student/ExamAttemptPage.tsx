@@ -21,11 +21,32 @@ interface QuestionView {
   audioUrl?: string | null;
   audioAssetId?: string | null;
   audioPlayRules?: AudioPlayRules | null;
+  imageUrl?: string | null;
   options?: Array<{ key: string; text: string }>;
   maxWordLimit?: number | null;
   minWordLimit?: number | null;
   marks?: number;
 }
+
+const CHOICE_QUESTION_TYPES = new Set([
+  "SINGLE_CHOICE",
+  "MULTIPLE_CHOICE",
+  "MULTIPLE_ANSWER",
+  "TRUE_FALSE_NOT_GIVEN",
+  "YES_NO_NOT_GIVEN",
+  "HIGHLIGHT_CORRECT_SUMMARY",
+  "SELECT_MISSING_WORD",
+  "HIGHLIGHT_INCORRECT_WORDS",
+  "REORDER_PARAGRAPHS",
+]);
+
+const SINGLE_ANSWER_TYPES = new Set([
+  "SINGLE_CHOICE",
+  "TRUE_FALSE_NOT_GIVEN",
+  "YES_NO_NOT_GIVEN",
+  "HIGHLIGHT_CORRECT_SUMMARY",
+  "SELECT_MISSING_WORD",
+]);
 
 interface AttemptData {
   attempt: { _id: string; status: string; expiresAt: string; startedAt: string; attemptNumber: number };
@@ -43,7 +64,7 @@ interface Answer {
 
 function defaultValue(q: QuestionView): unknown {
   if (AUDIO_QUESTION_TYPES.has(q.type)) return {};
-  if (q.type.includes("CHOICE") || q.type.includes("TRUE") || q.type.includes("YES")) return [];
+  if (CHOICE_QUESTION_TYPES.has(q.type)) return [];
   return "";
 }
 
@@ -198,7 +219,7 @@ function QuestionCard({ index, attemptId, question, answer, onAnswer }: {
   answer: unknown;
   onAnswer: (value: unknown, answered: boolean) => void;
 }) {
-  const isChoice = question.type.includes("CHOICE") || question.type.includes("TRUE") || question.type.includes("YES");
+  const isChoice = CHOICE_QUESTION_TYPES.has(question.type);
   const isAudio = AUDIO_QUESTION_TYPES.has(question.type);
   const selected: string[] = Array.isArray(answer) ? answer : typeof answer === "string" && answer ? [answer] : [];
   const qid = String(question._id ?? question.id ?? index);
@@ -225,6 +246,11 @@ function QuestionCard({ index, attemptId, question, answer, onAnswer }: {
         {question.passage && (
           <div className="max-h-48 overflow-y-auto rounded-md border bg-muted/40 p-3 text-sm">{question.passage}</div>
         )}
+        {question.imageUrl && (
+          <div className="overflow-hidden rounded-md border bg-muted/30">
+            <img src={question.imageUrl} alt={question.title} className="max-h-80 w-full object-contain" />
+          </div>
+        )}
         {isAudio ? (
           <SpeakingRecorder value={answer} onChange={(v, answered) => onAnswer(v, answered)} />
         ) : isChoice ? (
@@ -234,10 +260,10 @@ function QuestionCard({ index, attemptId, question, answer, onAnswer }: {
               return (
                 <label key={opt.key} className="flex cursor-pointer items-center gap-2 rounded-md border p-2 text-sm hover:bg-muted">
                   <input
-                    type={question.type === "SINGLE_CHOICE" || question.type.includes("TRUE") || question.type.includes("YES") ? "radio" : "checkbox"}
+                    type={SINGLE_ANSWER_TYPES.has(question.type) ? "radio" : "checkbox"}
                     checked={checked}
                     onChange={() => {
-                      const multi = question.type === "MULTIPLE_CHOICE" || question.type === "MULTIPLE_ANSWER";
+                      const multi = !SINGLE_ANSWER_TYPES.has(question.type);
                       if (multi) {
                         const next = checked ? selected.filter((k) => k !== opt.key) : [...selected, opt.key];
                         onAnswer(next, next.length > 0);

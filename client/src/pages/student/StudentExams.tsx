@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/ca
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../components/ui/table";
-import { Pagination, TableEmptyState, TableSkeleton } from "../../components/ui/table-toolbar";
+import { Pagination, PanelEmptyState, TableSkeleton } from "../../components/ui/table-toolbar";
 import { ErrorState } from "../../components/ui/feedback";
 import { getErrorMessage, formatDate, formatDuration } from "../../utils";
 
@@ -56,7 +56,7 @@ export function StudentExams() {
         <CardHeader><CardTitle className="text-base">Available tests</CardTitle></CardHeader>
         <CardContent className="p-0">
           {isLoading ? <TableSkeleton rows={6} /> : exams.length === 0 ? (
-            <TableEmptyState colSpan={6} title="No tests assigned" description="Your teacher will assign tests to you." />
+            <PanelEmptyState title="No tests assigned" description="Your teacher will assign tests to you." />
           ) : (
             <Table>
               <TableHeader>

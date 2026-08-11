@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogC
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "../../components/ui/table";
-import { TableToolbar, Pagination, TableEmptyState, TableSkeleton } from "../../components/ui/table-toolbar";
+import { TableToolbar, Pagination, PanelEmptyState, TableSkeleton } from "../../components/ui/table-toolbar";
 import { Spinner } from "../../components/ui/feedback";
 import { AudioUpload } from "../../components/shared/AudioUpload";
 import { getErrorMessage, formatDate, cn } from "../../utils";
@@ -53,8 +53,24 @@ interface QuestionDetail {
   difficulty?: string;
 }
 
-const CHOICE_TYPES = ["SINGLE_CHOICE", "MULTIPLE_CHOICE", "MULTIPLE_ANSWER", "TRUE_FALSE_NOT_GIVEN", "YES_NO_NOT_GIVEN"];
-const SINGLE_CHOICE = ["SINGLE_CHOICE", "TRUE_FALSE_NOT_GIVEN", "YES_NO_NOT_GIVEN"];
+const CHOICE_TYPES = [
+  "SINGLE_CHOICE",
+  "MULTIPLE_CHOICE",
+  "MULTIPLE_ANSWER",
+  "TRUE_FALSE_NOT_GIVEN",
+  "YES_NO_NOT_GIVEN",
+  "HIGHLIGHT_CORRECT_SUMMARY",
+  "SELECT_MISSING_WORD",
+  "HIGHLIGHT_INCORRECT_WORDS",
+  "REORDER_PARAGRAPHS",
+];
+const SINGLE_CHOICE = [
+  "SINGLE_CHOICE",
+  "TRUE_FALSE_NOT_GIVEN",
+  "YES_NO_NOT_GIVEN",
+  "HIGHLIGHT_CORRECT_SUMMARY",
+  "SELECT_MISSING_WORD",
+];
 
 export function TeacherQuestions() {
   const qc = useQueryClient();
@@ -160,7 +176,7 @@ export function TeacherQuestions() {
           {listQuery.isLoading ? (
             <TableSkeleton rows={6} />
           ) : questions.length === 0 ? (
-            <TableEmptyState colSpan={7} title="No questions yet" description="Create questions to build your bank." />
+            <PanelEmptyState title="No questions yet" description="Create questions to build your bank." />
           ) : (
             <Table>
               <TableHeader>

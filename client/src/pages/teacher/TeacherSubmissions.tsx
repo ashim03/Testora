@@ -12,6 +12,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from ".
 import { TableToolbar, Pagination, TableEmptyState, TableSkeleton } from "../../components/ui/table-toolbar";
 import { ErrorState, Spinner } from "../../components/ui/feedback";
 import { AssignmentGradeDialog, type AssignmentSubmissionRow } from "../../components/assignments/AssignmentGradeDialog";
+import { AudioPlayer } from "../../components/shared/AudioPlayer";
+import { AUDIO_QUESTION_TYPES, speakingAnswerValue } from "../../components/SpeakingRecorder";
 import { getErrorMessage, formatDateTime, titleCase } from "../../utils";
 
 interface ExamSubmissionRow {
@@ -326,6 +328,35 @@ function TabButton({ active, onClick, icon, label, count }: { active: boolean; o
   );
 }
 
+function isAudioAnswer(questionType: string, value: unknown): boolean {
+  const answer = speakingAnswerValue(value);
+  return Boolean(answer.url && AUDIO_QUESTION_TYPES.has(questionType));
+}
+
+function AnswerAudioPlayer({ value, storageKey, label }: { value: unknown; storageKey: string; label: string }) {
+  const answer = speakingAnswerValue(value);
+  if (!answer.url) {
+    return <div className="rounded bg-muted/40 px-3 py-2 text-sm text-muted-foreground">Recording unavailable</div>;
+  }
+  return (
+    <AudioPlayer
+      src={answer.url}
+      assetId={answer.assetId}
+      rules={{ maxPlays: null, allowSeek: true }}
+      storageKey={storageKey}
+      compact
+      label={label}
+    />
+  );
+}
+
+function readableAnswer(value: unknown): string {
+  if (typeof value === "string") return value;
+  if (Array.isArray(value)) return value.join(", ");
+  if (value !== null && typeof value === "object") return JSON.stringify(value);
+  return "Answered";
+}
+
 function ExamReviewDialog({ submission, onClose, onGraded }: { submission: ExamSubmissionRow | null; onClose: () => void; onGraded: () => void }) {
   const qc = useQueryClient();
   const [score, setScore] = useState<string>("");
@@ -428,9 +459,15 @@ function ExamReviewDialog({ submission, onClose, onGraded }: { submission: ExamS
                           );
                         })}
                       </div>
+                    ) : isAudioAnswer(q.type, ans?.answer) ? (
+                      <AnswerAudioPlayer
+                        value={ans?.answer}
+                        storageKey={`teacher-answer-${submission._id}-${q._id ?? q.id ?? i}`}
+                        label={`Student recording for question ${i + 1}`}
+                      />
                     ) : (
                       <div className={`rounded bg-muted/40 px-3 py-2 text-sm ${ans?.answered ? "" : "text-muted-foreground"}`}>
-                        {ans?.answered ? (typeof ans.answer === "string" ? ans.answer : typeof ans.answer === "object" ? JSON.stringify(ans.answer) : "Answered") : "Not answered"}
+                        {ans?.answered ? readableAnswer(ans.answer) : "Not answered"}
                       </div>
                     )}
                     {ans?.autoCorrect?.isCorrect != null && (

@@ -8,7 +8,7 @@ import { useAuthStore } from "../../store/auth";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../components/ui/table";
-import { Pagination, TableEmptyState, TableSkeleton } from "../../components/ui/table-toolbar";
+import { Pagination, PanelEmptyState, TableSkeleton } from "../../components/ui/table-toolbar";
 import { ErrorState } from "../../components/ui/feedback";
 import { formatDateTime } from "../../utils";
 import { notificationTarget } from "../../utils/notificationTargets";
@@ -84,7 +84,7 @@ export function StudentNotifications() {
         <CardHeader><CardTitle className="text-base">Recent notifications</CardTitle></CardHeader>
         <CardContent className="p-0">
           {isLoading ? <TableSkeleton rows={6} /> : rows.length === 0 ? (
-            <TableEmptyState colSpan={5} title="No notifications" description="You're all caught up." />
+            <PanelEmptyState title="No notifications" description="You're all caught up." />
           ) : (
             <Table>
               <TableHeader>

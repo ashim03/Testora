@@ -12,11 +12,11 @@ export const AUDIO_QUESTION_TYPES = new Set([
   "RETELL_LECTURE",
   "SPEAKING_RESPONSE",
   "AUDIO_RESPONSE",
-  "IMAGE_BASED_RESPONSE",
 ]);
 
 export interface SpeakingAnswer {
   url?: string;
+  assetId?: string;
   duration?: number;
   recordedAt?: string;
 }
@@ -27,6 +27,7 @@ export function speakingAnswerValue(value: unknown): SpeakingAnswer {
     if (typeof obj.url === "string" && obj.url.trim()) {
       return {
         url: obj.url,
+        assetId: typeof obj.assetId === "string" ? obj.assetId : undefined,
         duration: typeof obj.duration === "number" ? obj.duration : undefined,
         recordedAt: typeof obj.recordedAt === "string" ? obj.recordedAt : undefined,
       };
@@ -98,10 +99,15 @@ export function SpeakingRecorder({
     try {
       const file = new File([blob], `speaking-${Date.now()}.webm`, { type: blob.type || "audio/webm" });
       const result = await uploadFile(file, "AUDIO");
-      onChange({ url: result.url, duration, recordedAt: new Date().toISOString() }, true);
+      if (!result.url) throw new Error("Upload failed");
+      onChange({ url: result.url, assetId: result.assetId, duration, recordedAt: new Date().toISOString() }, true);
+      setPendingUrl(null);
+      URL.revokeObjectURL(localUrl);
     } catch (err) {
       toast.error(getErrorMessage(err));
-      onChange({ url: localUrl, duration, recordedAt: new Date().toISOString() }, true);
+      setPendingUrl(null);
+      URL.revokeObjectURL(localUrl);
+      onChange(undefined, false);
     } finally {
       setUploading(false);
     }

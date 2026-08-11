@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogC
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "../../components/ui/table";
-import { TableToolbar, Pagination, TableEmptyState, TableSkeleton } from "../../components/ui/table-toolbar";
+import { TableToolbar, Pagination, PanelEmptyState, TableSkeleton } from "../../components/ui/table-toolbar";
 import { Spinner } from "../../components/ui/feedback";
 import { getErrorMessage, formatDate, formatDuration, titleCase } from "../../utils";
 
@@ -99,7 +99,7 @@ export function TeacherExams() {
           {listQuery.isLoading ? (
             <TableSkeleton rows={6} />
           ) : exams.length === 0 ? (
-            <TableEmptyState colSpan={7} title="No exams yet" description="Create your first exam to get started." />
+            <PanelEmptyState title="No exams yet" description="Create your first exam to get started." />
           ) : (
             <Table>
               <TableHeader>

@@ -18,6 +18,9 @@ const OBJECTIVE_TYPES = new Set([
   "REORDER_PARAGRAPHS",
   "LISTENING_DICTATION",
   "ANSWER_SHORT_QUESTION",
+  "HIGHLIGHT_CORRECT_SUMMARY",
+  "SELECT_MISSING_WORD",
+  "HIGHLIGHT_INCORRECT_WORDS",
 ]);
 
 export async function resolveTeacherIdForStudent(studentId: string): Promise<Types.ObjectId | null> {
