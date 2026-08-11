@@ -16,6 +16,11 @@ interface RubricCriterion {
   weight: number;
 }
 
+export interface QuestionAudioPlayRules {
+  maxPlays?: number | null;
+  allowSeek: boolean;
+}
+
 export interface IQuestion extends Document {
   createdBy: Types.ObjectId;
   category: QuestionCategoryType;
@@ -29,6 +34,9 @@ export interface IQuestion extends Document {
   chapterId?: Types.ObjectId | null;
   topic?: string;
   audioUrl?: string | null;
+  audioAssetId?: Types.ObjectId | null;
+  audioDuration?: number;
+  audioPlayRules?: QuestionAudioPlayRules | null;
   imageUrl?: string | null;
   videoUrl?: string | null;
   options?: Option[];
@@ -42,7 +50,6 @@ export interface IQuestion extends Document {
   explanation?: string;
   tags?: string[];
   rubric?: RubricCriterion[];
-  audioDuration?: number;
   deletedAt?: Date | null;
   isPublic?: boolean;
   createdAt: Date;
@@ -64,6 +71,14 @@ const rubricSchema = new mongoose.Schema(
   { _id: false },
 );
 
+const audioPlayRulesSchema = new mongoose.Schema(
+  {
+    maxPlays: { type: Number, default: null, min: 1, max: 50 },
+    allowSeek: { type: Boolean, default: true },
+  },
+  { _id: false },
+);
+
 const schema = new mongoose.Schema(
   {
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true, index: true },
@@ -78,6 +93,9 @@ const schema = new mongoose.Schema(
     chapterId: { type: mongoose.Schema.Types.ObjectId, ref: "CourseChapter", default: null, index: true },
     topic: { type: String, default: "" },
     audioUrl: { type: String, default: null },
+    audioAssetId: { type: mongoose.Schema.Types.ObjectId, ref: "MediaAsset", default: null },
+    audioDuration: { type: Number, default: null },
+    audioPlayRules: { type: audioPlayRulesSchema, default: null },
     imageUrl: { type: String, default: null },
     videoUrl: { type: String, default: null },
     options: { type: [optionSchema], default: [] },
@@ -91,7 +109,6 @@ const schema = new mongoose.Schema(
     explanation: { type: String, default: "" },
     tags: { type: [String], default: [] },
     rubric: { type: [rubricSchema], default: [] },
-    audioDuration: { type: Number, default: null },
     deletedAt: { type: Date, default: null },
     isPublic: { type: Boolean, default: false },
   },

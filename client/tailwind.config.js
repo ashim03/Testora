@@ -60,11 +60,11 @@ export default {
         },
       },
       boxShadow: {
-        card: "0 1px 3px 0 rgb(0 0 0 / 0.06), 0 1px 2px -1px rgb(0 0 0 / 0.06)",
-        "card-hover": "0 10px 30px -10px rgb(0 0 0 / 0.15)",
+        card: "0 1px 2px rgb(15 23 42 / 0.05), 0 0 0 1px rgb(15 23 42 / 0.02)",
+        "card-hover": "0 12px 28px -18px rgb(15 23 42 / 0.35), 0 4px 12px -8px rgb(15 23 42 / 0.18)",
       },
       borderRadius: {
-        xl: "0.9rem",
+        xl: "0.5rem",
       },
       keyframes: {
         "fade-in": { from: { opacity: "0" }, to: { opacity: "1" } },

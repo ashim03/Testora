@@ -9,7 +9,20 @@ const MIME_BY_KIND: Record<string, Set<string>> = {
   PROFILE_IMAGE: new Set(["image/png", "image/jpeg", "image/webp"]),
   LOGO: new Set(["image/png", "image/jpeg", "image/webp", "image/svg+xml"]),
   QUESTION_IMAGE: new Set(["image/png", "image/jpeg", "image/webp"]),
-  AUDIO: new Set(["audio/mpeg", "audio/wav", "audio/x-wav", "audio/webm", "audio/mp4", "audio/ogg"]),
+  AUDIO: new Set([
+    "audio/mpeg",
+    "audio/mp3",
+    "audio/wav",
+    "audio/x-wav",
+    "audio/wave",
+    "audio/webm",
+    "audio/mp4",
+    "audio/m4a",
+    "audio/x-m4a",
+    "audio/aac",
+    "audio/x-aac",
+    "audio/ogg",
+  ]),
   DOCUMENT: new Set([
     "application/pdf",
     "application/msword",
@@ -20,9 +33,14 @@ const MIME_BY_KIND: Record<string, Set<string>> = {
   ]),
 };
 
+function maxBytesFor(kind: string): number {
+  if (kind === "AUDIO") return config.audioMaxSizeMb * 1024 * 1024;
+  return config.maxFileSizeMb * 1024 * 1024;
+}
+
 const um = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: config.maxFileSizeMb * 1024 * 1024, files: 1 },
+  limits: { fileSize: Math.max(maxBytesFor("AUDIO"), config.maxFileSizeMb * 1024 * 1024), files: 1 },
   fileFilter: (req, file, cb) => {
     const kind = (req.query.kind as string) || (req.body.kind as string) || "DOCUMENT";
     if (!kind || !MIME_BY_KIND[kind]) {
@@ -40,5 +58,9 @@ const um = multer({
 const router = Router();
 
 router.post("/upload", authenticate, um.single("file"), media.uploadFile);
+
+router.get("/audio", authenticate, media.listAudios);
+router.get("/audio/:id/file", authenticate, media.streamAudio);
+router.delete("/audio/:id", authenticate, media.deleteAudio);
 
 export default router;

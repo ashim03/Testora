@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-import { Users, FileText, CheckCircle2, Clock } from "lucide-react";
+import { Activity, Users, FileText, CheckCircle2, Clock } from "lucide-react";
 import { apiGet } from "../../api/client";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
@@ -40,28 +40,34 @@ export function AdminDashboard() {
   const cards = [
     { label: "Students", value: data.totalStudents, icon: Users, to: "/admin/students", color: "text-brand-600" },
     { label: "Teachers", value: data.totalTeachers, icon: Users, to: "/admin/teachers", color: "text-violet-600" },
-    { label: "Tests", value: data.totalTests, icon: FileText, to: "/admin/teachers", color: "text-accent-600" },
-    { label: "Submitted", value: data.testsCompleted, icon: CheckCircle2, to: "/admin/teachers", color: "text-emerald-600" },
-    { label: "Pending grading", value: data.pendingGrading, icon: Clock, to: "/admin/teachers", color: "text-rose-600" },
+    { label: "Tests", value: data.totalTests, icon: FileText, to: "/admin/exams", color: "text-accent-700" },
+    { label: "Submitted", value: data.testsCompleted, icon: CheckCircle2, to: "/admin/submissions", color: "text-emerald-700" },
+    { label: "Pending grading", value: data.pendingGrading, icon: Clock, to: "/admin/submissions", color: "text-rose-700" },
   ];
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Admin Dashboard</h1>
-        <p className="text-sm text-muted-foreground">Platform-wide overview</p>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold tracking-normal">Admin Dashboard</h1>
+          <p className="text-sm text-muted-foreground">Platform-wide overview and operational status</p>
+        </div>
+        <div className="inline-flex items-center gap-2 rounded-md border bg-card px-3 py-2 text-sm text-muted-foreground shadow-card">
+          <Activity className="size-4 text-accent-700" />
+          <span><span className="font-semibold text-foreground">{data.activeUsers}</span> active users</span>
+        </div>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         {cards.map((c) => (
-          <Link key={c.label} to={c.to}>
-            <Card className="transition-shadow hover:shadow-md">
-              <CardContent className="flex items-center gap-4 p-4">
-                <div className={`rounded-lg bg-muted p-2.5 ${c.color}`}>
+          <Link key={c.label} to={c.to} className="group">
+            <Card className="h-full transition-all hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-card-hover">
+              <CardContent className="flex h-full items-center gap-4 p-4">
+                <div className={`rounded-md bg-muted p-2.5 ${c.color}`}>
                   <c.icon className="size-5" />
                 </div>
-                <div>
-                  <div className="text-2xl font-bold">{c.value}</div>
+                <div className="min-w-0">
+                  <div className="text-2xl font-bold leading-none">{c.value}</div>
                   <div className="text-xs text-muted-foreground">{c.label}</div>
                 </div>
               </CardContent>
@@ -72,7 +78,7 @@ export function AdminDashboard() {
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
-          <CardHeader>
+          <CardHeader className="border-b">
             <CardTitle>Recent Registrations</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
@@ -104,7 +110,7 @@ export function AdminDashboard() {
         </Card>
 
         <Card>
-          <CardHeader>
+          <CardHeader className="border-b">
             <CardTitle>Recent Activity</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
@@ -137,15 +143,15 @@ export function AdminDashboard() {
       </div>
 
       <Card>
-        <CardHeader><CardTitle>Skill Performance (%)</CardTitle></CardHeader>
+        <CardHeader className="border-b"><CardTitle>Skill Performance (%)</CardTitle></CardHeader>
         <CardContent>
           {Object.keys(s).length === 0 ? (
             <EmptyState title="No performance data yet" description="Published results will appear here." />
           ) : (
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               {Object.entries(s).map(([k, v]) => (
-                <div key={k} className="rounded-lg border p-3 text-center">
-                  <div className="text-lg font-bold">{v}%</div>
+                <div key={k} className="rounded-lg border bg-muted/25 p-3 text-center">
+                  <div className="text-lg font-bold text-primary">{v}%</div>
                   <div className="text-xs text-muted-foreground">{titleCase(k.replace(/_/g, " "))}</div>
                 </div>
               ))}

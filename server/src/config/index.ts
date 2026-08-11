@@ -15,6 +15,8 @@ export interface ServerConfig {
   jwtRefreshExpiresIn: string;
   cookieSecret: string;
   maxFileSizeMb: number;
+  audioMaxSizeMb: number;
+  uploadsDir: string;
   isProduction: boolean;
   cloudinary: {
     cloudName: string;
@@ -48,6 +50,8 @@ export const config: ServerConfig = {
   jwtRefreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN || "7d",
   cookieSecret: process.env.COOKIE_SECRET || "",
   maxFileSizeMb: Number(process.env.MAX_FILE_SIZE_MB || 20),
+  audioMaxSizeMb: Number(process.env.AUDIO_MAX_SIZE_MB || 30),
+  uploadsDir: process.env.UPLOADS_DIR || "uploads",
   isProduction: process.env.NODE_ENV === "production",
   cloudinary: {
     cloudName: process.env.CLOUDINARY_CLOUD_NAME || "",

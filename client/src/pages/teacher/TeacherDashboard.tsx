@@ -41,21 +41,21 @@ export function TeacherDashboard() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
             {branding?.logoUrl ? (
               <img src={branding.logoUrl} alt="logo" className="size-8 rounded-lg object-cover" />
             ) : (
-              <span className="flex size-8 items-center justify-center rounded-lg bg-gradient-to-br from-brand-600 to-accent-500 text-sm font-bold text-white">
+              <span className="flex size-8 items-center justify-center rounded-lg bg-primary text-sm font-bold text-primary-foreground">
                 {branding?.name ? branding.name.charAt(0) : "T"}
               </span>
             )}
-            <h1 className="text-2xl font-bold">{branding?.name || "Teacher"} dashboard</h1>
+            <h1 className="text-2xl font-bold tracking-normal">{branding?.name || "Teacher"} dashboard</h1>
           </div>
           <p className="text-sm text-muted-foreground">Manage your classes, content and grading</p>
         </div>
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <div className="flex items-center gap-2 rounded-md border bg-card px-3 py-2 text-sm text-muted-foreground shadow-card">
           <Briefcase className="size-4" /> Signed in as {user?.firstName} {user?.lastName}
         </div>
       </div>
@@ -63,13 +63,13 @@ export function TeacherDashboard() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {cards.map((c) => (
           <Link key={c.label} to={c.to} className="group">
-            <Card className="transition-all hover:-translate-y-0.5 hover:shadow-md">
+            <Card className="h-full transition-all hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-card-hover">
               <CardContent className="flex items-center gap-4 p-4">
-                <div className={`rounded-lg bg-muted p-2.5 ${c.color}`}>
+                <div className={`rounded-md bg-muted p-2.5 ${c.color}`}>
                   <c.icon className="size-5" />
                 </div>
-                <div>
-                  <div className="text-2xl font-bold">{c.value}</div>
+                <div className="min-w-0">
+                  <div className="text-2xl font-bold leading-none">{c.value}</div>
                   <div className="text-xs text-muted-foreground">{c.label}</div>
                 </div>
               </CardContent>
@@ -80,7 +80,7 @@ export function TeacherDashboard() {
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
-          <CardHeader><CardTitle className="text-base">Quick actions</CardTitle></CardHeader>
+          <CardHeader className="border-b"><CardTitle>Quick actions</CardTitle></CardHeader>
           <CardContent className="grid gap-2 sm:grid-cols-2">
             <QuickLink to="/teacher/courses" icon={BookOpen} label="Manage course content" count={data.courseCount} />
             <QuickLink to="/teacher/exams" icon={FileText} label="Build an exam" />
@@ -91,7 +91,7 @@ export function TeacherDashboard() {
         </Card>
 
         <Card>
-          <CardHeader><CardTitle className="text-base">Grading queue</CardTitle></CardHeader>
+          <CardHeader className="border-b"><CardTitle>Grading queue</CardTitle></CardHeader>
           <CardContent>
             {data.pendingGrading === 0 ? (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -116,7 +116,7 @@ export function TeacherDashboard() {
 
 function QuickLink({ to, icon: Icon, label, count }: { to: string; icon: typeof Users; label: string; count?: number }) {
   return (
-    <Link to={to} className="flex items-center justify-between rounded-md border px-3 py-2.5 text-sm transition-colors hover:bg-muted">
+    <Link to={to} className="flex items-center justify-between rounded-md border bg-card px-3 py-2.5 text-sm transition-colors hover:border-primary/25 hover:bg-muted/60">
       <span className="flex items-center gap-2"><Icon className="size-4 text-muted-foreground" /> {label}</span>
       {typeof count === "number" && count > 0 ? <Badge variant="secondary">{count}</Badge> : <ArrowRight className="size-4 text-muted-foreground" />}
     </Link>

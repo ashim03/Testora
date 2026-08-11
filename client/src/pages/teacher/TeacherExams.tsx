@@ -13,7 +13,7 @@ import {
 } from "../../components/ui/table";
 import { TableToolbar, Pagination, TableEmptyState, TableSkeleton } from "../../components/ui/table-toolbar";
 import { Spinner } from "../../components/ui/feedback";
-import { getErrorMessage, formatDate, formatDuration } from "../../utils";
+import { getErrorMessage, formatDate, formatDuration, titleCase } from "../../utils";
 
 interface ExamRow {
   _id: string;
@@ -87,7 +87,7 @@ export function TeacherExams() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">Examinations</h1>
-          <p className="text-sm text-muted-foreground">Create and manage tests</p>
+          <p className="text-sm text-muted-foreground">Create and manage tests. Published PRACTICE / SECTIONAL tests appear in your students' Practice library.</p>
         </div>
         <Button onClick={() => setBuilding({ mode: "create" })}><Plus className="size-4" /> New exam</Button>
       </div>
@@ -105,6 +105,7 @@ export function TeacherExams() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Title</TableHead>
+                  <TableHead>Type</TableHead>
                   <TableHead>Category</TableHead>
                   <TableHead>Duration</TableHead>
                   <TableHead>Status</TableHead>
@@ -116,6 +117,14 @@ export function TeacherExams() {
                 {exams.map((e) => (
                   <TableRow key={e._id}>
                     <TableCell className="font-medium">{e.title}</TableCell>
+                    <TableCell>
+                      <Badge variant={e.type === "PRACTICE" || e.type === "SECTIONAL" ? "secondary" : "outline"}>
+                        {titleCase(e.type)}
+                        {(e.type === "PRACTICE" || e.type === "SECTIONAL") && e.status === "PUBLISHED" && (
+                          <span className="ml-1.5 text-[10px] font-normal text-muted-foreground">· practice</span>
+                        )}
+                      </Badge>
+                    </TableCell>
                     <TableCell>{e.category}</TableCell>
                     <TableCell className="text-muted-foreground">{e.durationSec ? formatDuration(e.durationSec) : "—"}</TableCell>
                     <TableCell><StatusBadge status={e.status} /></TableCell>

@@ -42,6 +42,14 @@ export function countWords(text: string): number {
   return trimmed.split(/\s+/).length;
 }
 
+export function formatAudioTime(seconds?: number | null): string {
+  if (!seconds || !Number.isFinite(seconds) || seconds < 0) return "0:00";
+  const total = Math.floor(seconds);
+  const m = Math.floor(total / 60);
+  const s = total % 60;
+  return `${m}:${s.toString().padStart(2, "0")}`;
+}
+
 export function titleCase(value: string): string {
   return value
     .toLowerCase()

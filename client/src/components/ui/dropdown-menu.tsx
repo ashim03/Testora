@@ -5,7 +5,13 @@ export const DropdownMenu = DropdownMenuPrimitive.Root;
 export const DropdownMenuTrigger = DropdownMenuPrimitive.Trigger;
 export const DropdownMenuGroup = DropdownMenuPrimitive.Group;
 export const DropdownMenuLabel = DropdownMenuPrimitive.Label;
-export const DropdownMenuSeparator = DropdownMenuPrimitive.Separator;
+
+export function DropdownMenuSeparator({
+  className,
+  ...props
+}: React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Separator>) {
+  return <DropdownMenuPrimitive.Separator className={cn("-mx-1 my-1 h-px bg-border", className)} {...props} />;
+}
 
 export function DropdownMenuContent({
   className,
@@ -15,7 +21,7 @@ export function DropdownMenuContent({
     <DropdownMenuPrimitive.Portal>
       <DropdownMenuPrimitive.Content
         className={cn(
-          "z-50 min-w-[10rem] overflow-hidden rounded-lg border bg-popover bg-card p-1 text-foreground shadow-md animate-fade-in",
+          "z-50 min-w-[10rem] overflow-hidden rounded-lg border bg-popover p-1 text-foreground shadow-card-hover animate-fade-in",
           className,
         )}
         {...props}
@@ -24,9 +30,7 @@ export function DropdownMenuContent({
   );
 }
 
-export const DropdownMenuItem = DropdownMenuPrimitive.Item;
-
-export function DropdownMenuItemStyled({
+export function DropdownMenuItem({
   className,
   ...props
 }: React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Item>) {
@@ -40,3 +44,5 @@ export function DropdownMenuItemStyled({
     />
   );
 }
+
+export const DropdownMenuItemStyled = DropdownMenuItem;

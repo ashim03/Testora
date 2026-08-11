@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/ca
 import { Badge } from "../../components/ui/badge";
 import { PageSpinner, ErrorState } from "../../components/ui/feedback";
 import { SpeakingRecorder, AUDIO_QUESTION_TYPES } from "../../components/SpeakingRecorder";
+import { AudioPlayer, type AudioPlayRules } from "../../components/shared/AudioPlayer";
 import { formatDuration, getErrorMessage } from "../../utils";
 
 interface QuestionView {
@@ -17,6 +18,9 @@ interface QuestionView {
   type: string;
   instructions?: string;
   passage?: string;
+  audioUrl?: string | null;
+  audioAssetId?: string | null;
+  audioPlayRules?: AudioPlayRules | null;
   options?: Array<{ key: string; text: string }>;
   maxWordLimit?: number | null;
   minWordLimit?: number | null;
@@ -169,6 +173,7 @@ export function ExamAttemptPage() {
               <QuestionCard
                 key={id}
                 index={i}
+                attemptId={QID}
                 question={q}
                 answer={current?.answer}
                 onAnswer={(v, answered) => updateAnswer(id, v, answered)}
@@ -186,8 +191,9 @@ export function ExamAttemptPage() {
   );
 }
 
-function QuestionCard({ index, question, answer, onAnswer }: {
+function QuestionCard({ index, attemptId, question, answer, onAnswer }: {
   index: number;
+  attemptId: string;
   question: QuestionView;
   answer: unknown;
   onAnswer: (value: unknown, answered: boolean) => void;
@@ -195,6 +201,7 @@ function QuestionCard({ index, question, answer, onAnswer }: {
   const isChoice = question.type.includes("CHOICE") || question.type.includes("TRUE") || question.type.includes("YES");
   const isAudio = AUDIO_QUESTION_TYPES.has(question.type);
   const selected: string[] = Array.isArray(answer) ? answer : typeof answer === "string" && answer ? [answer] : [];
+  const qid = String(question._id ?? question.id ?? index);
 
   return (
     <Card>
@@ -207,6 +214,14 @@ function QuestionCard({ index, question, answer, onAnswer }: {
       </CardHeader>
       <CardContent className="space-y-3">
         {question.instructions && <p className="text-sm text-muted-foreground">{question.instructions}</p>}
+        {question.audioUrl && (
+          <AudioPlayer
+            src={question.audioUrl}
+            assetId={question.audioAssetId ?? undefined}
+            rules={question.audioPlayRules ?? null}
+            storageKey={`${attemptId}:${qid}`}
+          />
+        )}
         {question.passage && (
           <div className="max-h-48 overflow-y-auto rounded-md border bg-muted/40 p-3 text-sm">{question.passage}</div>
         )}

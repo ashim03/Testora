@@ -157,6 +157,8 @@ export const assignmentsApi = {
   delete: (id: string) => apiDelete(`/exams/assignments/${id}`),
   listSubmissions: (assignmentId: string, params?: Record<string, unknown>) =>
     apiGet<unknown[]>(`/exams/assignments/${assignmentId}/submissions`, params),
+  listAllSubmissions: (params?: Record<string, unknown>) =>
+    apiGet<unknown[]>("/exams/assignment-submissions", params),
   gradeSubmission: (id: string, body: Record<string, unknown>) =>
     apiPost(`/exams/assignment-submissions/${id}/grade`, body),
 };

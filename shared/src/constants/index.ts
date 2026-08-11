@@ -114,6 +114,52 @@ export const CATEGORY_LABELS: Record<QuestionCategory, string> = {
   PTE_LISTENING: "PTE Listening",
 };
 
+export type SectionalPart = {
+  key: string;
+  label: string;
+};
+
+export const SECTIONAL_PARTS: Record<string, { label: string; icon: string; parts: SectionalPart[] }> = {
+  IELTS_LISTENING: {
+    label: "Listening",
+    icon: "Headphones",
+    parts: [
+      { key: "1", label: "Part 1" },
+      { key: "2", label: "Part 2" },
+      { key: "3", label: "Part 3" },
+      { key: "4", label: "Part 4" },
+    ],
+  },
+  IELTS_READING: {
+    label: "Reading",
+    icon: "BookOpen",
+    parts: [
+      { key: "1", label: "Passage 1" },
+      { key: "2", label: "Passage 2" },
+      { key: "3", label: "Passage 3" },
+    ],
+  },
+  IELTS_WRITING: {
+    label: "Writing",
+    icon: "PenLine",
+    parts: [
+      { key: "1", label: "Task 1" },
+      { key: "2", label: "Task 2" },
+    ],
+  },
+  IELTS_SPEAKING: {
+    label: "Speaking",
+    icon: "Mic",
+    parts: [
+      { key: "1", label: "Part 1" },
+      { key: "2", label: "Part 2" },
+      { key: "3", label: "Part 3" },
+    ],
+  },
+};
+
+export const SECTIONAL_CATEGORIES = Object.keys(SECTIONAL_PARTS);
+
 export const IELTS_WRITING_RUBRIC = [
   { key: "taskResponse", label: "Task Response", max: 9, weight: 25 },
   { key: "coherence", label: "Coherence and Cohesion", max: 9, weight: 25 },
@@ -155,10 +201,12 @@ export const NOTIFICATION_TYPES = [
   "COURSE_CONTENT_PUBLISHED",
   "COURSE_ANNOUNCEMENT",
   "ASSIGNMENT_GRADED",
+  "ASSIGNMENT_RETURNED",
   "QUIZ_AVAILABLE",
   "EXAM_SCHEDULED",
   "SUBMISSION_RECEIVED",
   "CONTENT_VIEWED",
+  "CHAT_MESSAGE",
 ] as const;
 
 export const COURSE_LEVELS = ["BEGINNER", "INTERMEDIATE", "ADVANCED", "ALL_LEVELS"] as const;

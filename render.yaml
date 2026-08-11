@@ -15,9 +15,7 @@ services:
       - key: CLIENT_URL
         value: https://ieltspte.vercel.app
       - key: MONGODB_URI
-        fromDatabase:
-          name: testora-db
-          property: connectionString
+        sync: false
       - key: JWT_ACCESS_SECRET
         sync: false
       - key: JWT_REFRESH_SECRET
@@ -32,9 +30,3 @@ services:
         sync: false
       - key: CLOUDINARY_API_SECRET
         sync: false
-
-databases:
-  - name: testora-db
-    databaseName: testora
-    plan: basic-512
-    region: oregon

@@ -74,6 +74,7 @@ export function ExamBuilder({ examId, onDone, onCancel }: { examId?: string; onD
   const [title, setTitle] = useState("");
   const [type, setType] = useState("PRACTICE");
   const [category, setCategory] = useState<string>(shared.QUESTION_CATEGORIES[0]);
+  const [part, setPart] = useState("");
   const [description, setDescription] = useState("");
   const [durationSec, setDurationSec] = useState("3600");
   const [attemptLimit, setAttemptLimit] = useState("1");
@@ -113,6 +114,7 @@ export function ExamBuilder({ examId, onDone, onCancel }: { examId?: string; onD
         setTitle(ex.title);
         setType(ex.type || "PRACTICE");
         setCategory(ex.category);
+        setPart(typeof (ex as any).part === "string" ? (ex as any).part : "");
         setDescription(ex.description || "");
         setDurationSec(ex.durationSec ? String(ex.durationSec) : "3600");
         setAttemptLimit(String(ex.attemptLimit ?? 1));
@@ -183,6 +185,7 @@ export function ExamBuilder({ examId, onDone, onCancel }: { examId?: string; onD
         title,
         type,
         category,
+        part: shared.SECTIONAL_PARTS[category] ? part || null : null,
         description,
         durationSec: Number(durationSec) || undefined,
         attemptLimit: Number(attemptLimit) || 1,
@@ -251,11 +254,22 @@ export function ExamBuilder({ examId, onDone, onCancel }: { examId?: string; onD
                 </div>
                 <div className="space-y-1.5">
                   <Label>Category</Label>
-                  <select value={category} onChange={(e) => setCategory(e.target.value)} className="w-full rounded-md border px-3 py-2 text-sm">
+                  <select value={category} onChange={(e) => { setCategory(e.target.value); setPart(""); }} className="w-full rounded-md border px-3 py-2 text-sm">
                     {shared.QUESTION_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
                   </select>
                 </div>
               </div>
+              {shared.SECTIONAL_PARTS[category] && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label>Part / Passage / Task</Label>
+                    <select value={part} onChange={(e) => setPart(e.target.value)} className="w-full rounded-md border px-3 py-2 text-sm">
+                      <option value="">All parts</option>
+                      {shared.SECTIONAL_PARTS[category].parts.map((p) => <option key={p.key} value={p.key}>{p.label}</option>)}
+                    </select>
+                  </div>
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label>Duration (seconds)</Label>

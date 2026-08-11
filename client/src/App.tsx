@@ -49,6 +49,7 @@ const ProfilePage = lazy(() => import("./pages/account/ProfilePage").then((m) =>
 const SettingsPage = lazy(() => import("./pages/account/SettingsPage").then((m) => ({ default: m.SettingsPage })));
 const NotificationsPage = lazy(() => import("./pages/account/NotificationsPage").then((m) => ({ default: m.NotificationsPage })));
 const SearchPage = lazy(() => import("./pages/account/SearchPage").then((m) => ({ default: m.SearchPage })));
+const ChatPage = lazy(() => import("./pages/account/ChatPage").then((m) => ({ default: m.ChatPage })));
 const StudentSubscription = lazy(() => import("./pages/student/StudentSubscription").then((m) => ({ default: m.StudentSubscription })));
 const ExamAttemptPage = lazy(() => import("./pages/student/ExamAttemptPage").then((m) => ({ default: m.ExamAttemptPage })));
 
@@ -99,6 +100,7 @@ export function App() {
         <Route path="/admin/settings" element={withLayout("SUPER_ADMIN", <AdminSettingsPage />)} />
         <Route path="/admin/profile" element={withLayout("SUPER_ADMIN", <ProfilePage />)} />
         <Route path="/admin/notifications" element={withLayout("SUPER_ADMIN", <NotificationsPage />)} />
+        <Route path="/admin/chat" element={withLayout("SUPER_ADMIN", <ChatPage />)} />
 
         <Route path="/teacher" element={withLayout("TEACHER", <TeacherDashboard />)} />
         <Route path="/teacher/courses" element={withLayout("TEACHER", <TeacherCourses />)} />
@@ -114,6 +116,7 @@ export function App() {
         <Route path="/teacher/profile" element={withLayout("TEACHER", <ProfilePage />)} />
         <Route path="/teacher/settings" element={withLayout("TEACHER", <SettingsPage />)} />
         <Route path="/teacher/notifications" element={withLayout("TEACHER", <NotificationsPage />)} />
+        <Route path="/teacher/chat" element={withLayout("TEACHER", <ChatPage />)} />
 
         <Route path="/student" element={withLayout("STUDENT", <StudentDashboard />)} />
         <Route path="/student/courses" element={withLayout("STUDENT", <StudentCourses />)} />
@@ -129,6 +132,7 @@ export function App() {
         <Route path="/student/profile" element={withLayout("STUDENT", <ProfilePage />)} />
         <Route path="/student/settings" element={withLayout("STUDENT", <SettingsPage />)} />
         <Route path="/student/subscription" element={withLayout("STUDENT", <StudentSubscription />)} />
+        <Route path="/student/chat" element={withLayout("STUDENT", <ChatPage />)} />
         <Route path="/student/exam/:attemptId" element={withLayout("STUDENT", <ExamAttemptPage />)} />
 
         <Route path="/search" element={withLayoutAnyRole(<SearchPage />)} />

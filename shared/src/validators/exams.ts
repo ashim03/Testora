@@ -16,6 +16,7 @@ export const createExamSchema = z.object({
   category: z.enum(QUESTION_CATEGORIES as unknown as [string, ...string[]]),
   description: z.string().max(2000).optional().default(""),
   durationSec: z.number().int().positive().max(43200).optional(),
+  part: z.string().trim().max(20).optional().nullable(),
   sections: z.array(sectionSchema).max(6).default([]),
   questionIds: z.array(idSchema).default([]),
   startAt: z.string().datetime({ offset: true }).optional(),
@@ -71,6 +72,10 @@ export const createAssignmentSchema = z.object({
   dueAt: z.string().datetime({ offset: true }).optional(),
   maxMarks: z.number().positive().max(1000).default(100),
   attachments: z.array(z.string().url()).optional().default([]),
+  submissionType: z.enum(["TEXT", "FILE", "TEXT_AND_FILE", "LINK", "AUDIO_VIDEO"]).optional().default("TEXT"),
+  allowedFileTypes: z.array(z.string()).optional().default([]),
+  requiresAttachment: z.boolean().optional().default(false),
+  allowResubmission: z.boolean().optional().default(true),
 });
 
 export const studentAnswerSchema = z.object({

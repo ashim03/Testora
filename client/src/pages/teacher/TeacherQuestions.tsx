@@ -14,6 +14,7 @@ import {
 } from "../../components/ui/table";
 import { TableToolbar, Pagination, TableEmptyState, TableSkeleton } from "../../components/ui/table-toolbar";
 import { Spinner } from "../../components/ui/feedback";
+import { AudioUpload } from "../../components/shared/AudioUpload";
 import { getErrorMessage, formatDate, cn } from "../../utils";
 import * as shared from "@ielts-pte-platform/shared";
 
@@ -35,6 +36,9 @@ interface QuestionDetail {
   instructions?: string;
   passage?: string;
   audioUrl?: string | null;
+  audioAssetId?: string | null;
+  audioDuration?: number | null;
+  audioPlayRules?: { maxPlays?: number | null; allowSeek?: boolean } | null;
   imageUrl?: string | null;
   videoUrl?: string | null;
   options?: Array<{ key: string; text: string }>;
@@ -105,6 +109,9 @@ export function TeacherQuestions() {
         negativeMarks: d.negativeMarks ?? 0,
         difficulty: d.difficulty || "MEDIUM",
         audioUrl: d.audioUrl || null,
+        audioAssetId: d.audioAssetId || null,
+        audioDuration: d.audioDuration ?? null,
+        audioPlayRules: d.audioPlayRules || null,
         imageUrl: d.imageUrl || null,
         videoUrl: d.videoUrl || null,
         minWordLimit: d.minWordLimit ?? null,
@@ -214,6 +221,9 @@ function QuestionForm({ question, onDone, onCancel }: { question: QuestionDetail
   const [instructions, setInstructions] = useState(question?.instructions || "");
   const [passage, setPassage] = useState(question?.passage || "");
   const [audioUrl, setAudioUrl] = useState(question?.audioUrl || "");
+  const [audioAssetId, setAudioAssetId] = useState(question?.audioAssetId || "");
+  const [audioDuration, setAudioDuration] = useState<number | null>(question?.audioDuration ?? null);
+  const [audioPlayRules, setAudioPlayRules] = useState<{ maxPlays?: number | null; allowSeek?: boolean } | null>(question?.audioPlayRules ?? null);
   const [imageUrl, setImageUrl] = useState(question?.imageUrl || "");
   const [videoUrl, setVideoUrl] = useState(question?.videoUrl || "");
   const [options, setOptions] = useState<string[]>(question?.options?.length ? question.options.map((o) => o.text) : ["", ""]);
@@ -243,6 +253,9 @@ function QuestionForm({ question, onDone, onCancel }: { question: QuestionDetail
     setExplanation(question?.explanation || "");
     setTags(question?.tags?.join(", ") || "");
     setAudioUrl(question?.audioUrl || "");
+    setAudioAssetId(question?.audioAssetId || "");
+    setAudioDuration(question?.audioDuration ?? null);
+    setAudioPlayRules(question?.audioPlayRules ?? null);
     setImageUrl(question?.imageUrl || "");
     setVideoUrl(question?.videoUrl || "");
     setMinWord(question?.minWordLimit ? String(question.minWordLimit) : "");
@@ -260,6 +273,9 @@ function QuestionForm({ question, onDone, onCancel }: { question: QuestionDetail
       instructions,
       passage,
       audioUrl: audioUrl || null,
+      audioAssetId: audioAssetId || null,
+      audioDuration: audioDuration || undefined,
+      audioPlayRules: audioPlayRules || undefined,
       imageUrl: imageUrl || null,
       videoUrl: videoUrl || null,
       explanation,
@@ -320,11 +336,20 @@ function QuestionForm({ question, onDone, onCancel }: { question: QuestionDetail
           <textarea value={passage} onChange={(e) => setPassage(e.target.value)} className="w-full rounded-md border px-3 py-2 text-sm" rows={4} />
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-3">
-          <div className="space-y-1.5">
-            <Label>Audio URL</Label>
-            <Input value={audioUrl} onChange={(e) => setAudioUrl(e.target.value)} placeholder="https://..." />
-          </div>
+        <div className="space-y-1.5">
+          <Label>Audio</Label>
+          <AudioUpload
+            value={audioUrl ? { url: audioUrl, assetId: audioAssetId || undefined, duration: audioDuration ?? undefined, rules: audioPlayRules } : null}
+            onChange={(v) => {
+              setAudioUrl(v?.url || "");
+              setAudioAssetId(v?.assetId || "");
+              setAudioDuration(v?.duration ?? null);
+              setAudioPlayRules(v?.rules ?? null);
+            }}
+          />
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-1.5">
             <Label>Image URL</Label>
             <Input value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} placeholder="https://..." />

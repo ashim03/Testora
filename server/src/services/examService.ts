@@ -1,5 +1,6 @@
 import { Types } from "mongoose";
 import { Exam, ExamAssignment, ExamAttempt, ExamAnswer, Question, Batch } from "../models";
+import { SECTIONAL_PARTS, SECTIONAL_CATEGORIES } from "@ielts-pte-platform/shared";
 import { ApiError, parseSort, generateReceipt } from "../utils/helpers";
 import { logActivity, audit, notify } from "./notificationService";
 import { resolveTeacherIdForStudent, afterSubmit } from "./gradingService";
@@ -160,7 +161,9 @@ export async function assignExam(
     } else {
       await ExamAssignment.create(payload);
     }
-    await notify(studentId, "TEST_ASSIGNED", "Test assigned", `A new test "${exam.title}" has been assigned to you.`);
+    await notify(studentId, "TEST_ASSIGNED", "Test assigned", `A new test "${exam.title}" has been assigned to you.`, {
+      examId: String(exam._id),
+    });
   }
   await audit("ASSIGN_EXAM", {
     actorId: actor.id,
@@ -193,6 +196,112 @@ export async function listStudentExams(studentId: string, query: { page?: number
   return { data, total, page, limit, pages: Math.ceil(total / limit) };
 }
 
+export async function listPracticeExams(studentId: string, query: { page?: number; limit?: number; search?: string; category?: string; part?: string }): Promise<unknown> {
+  const page = query.page || 1;
+  const limit = query.limit || 10;
+  const teacherId = await resolveTeacherIdForStudent(studentId);
+  const filter: Record<string, unknown> = {
+    type: { $in: ["PRACTICE", "SECTIONAL"] },
+    status: "PUBLISHED",
+    deletedAt: null,
+  };
+  if (teacherId) filter.createdBy = teacherId;
+  if (query.category) filter.category = query.category;
+  if (query.part) filter.part = query.part;
+  if (query.search) {
+    const re = new RegExp(query.search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
+    filter.title = re;
+  }
+  const total = await Exam.countDocuments(filter);
+  const exams = await Exam.find(filter).sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit).lean();
+  const data = [];
+  for (const e of exams) {
+    const attempt = await ExamAttempt.findOne({ examId: e._id, studentId }).sort({ attemptNumber: -1 }).lean();
+    const used = await ExamAttempt.countDocuments({ examId: e._id, studentId });
+    const qids = collectQuestionIds(e);
+    const hasCorrect = e.showAnswersImmediately;
+    data.push({ exam: { ...e, showsAnswers: hasCorrect }, attempt, attemptsUsed: used, questionCount: qids.length, remainingAttempts: Math.max(0, (e.attemptLimit || 1) - used) });
+  }
+  return { data, total, page, limit, pages: Math.ceil(total / limit) };
+}
+
+const FINISHED_STATES = ["SUBMITTED", "UNDER_REVIEW", "GRADED", "PUBLISHED"];
+
+export async function getSectionalPracticeSummary(studentId: string): Promise<unknown> {
+  const teacherId = await resolveTeacherIdForStudent(studentId);
+  const baseFilter: Record<string, unknown> = {
+    type: { $in: ["PRACTICE", "SECTIONAL"] },
+    status: "PUBLISHED",
+    deletedAt: null,
+    category: { $in: SECTIONAL_CATEGORIES },
+  };
+  if (teacherId) baseFilter.createdBy = teacherId;
+
+  const exams = await Exam.find(baseFilter).lean();
+  const examsByCategory: Record<string, typeof exams> = {};
+  for (const e of exams) {
+    (examsByCategory[e.category] ||= []).push(e);
+  }
+  const examIds = exams.map((e) => e._id);
+  const attempts = examIds.length
+    ? await ExamAttempt.find({ studentId, examId: { $in: examIds } }).lean()
+    : [];
+
+  const attemptsByExam: Record<string, Array<{ status: string }>> = {};
+  for (const a of attempts) {
+    (attemptsByExam[String(a.examId)] ||= []).push(a);
+  }
+
+  const sections = SECTIONAL_CATEGORIES.map((category) => {
+    const cfg = SECTIONAL_PARTS[category];
+    const categoryExams = examsByCategory[category] || [];
+    const completed = categoryExams.filter((e) =>
+      (attemptsByExam[String(e._id)] || []).some((a) => FINISHED_STATES.includes(a.status)),
+    ).length;
+    const inProgress = categoryExams.some((e) =>
+      (attemptsByExam[String(e._id)] || []).some((a) => a.status === "IN_PROGRESS"),
+    );
+
+    const parts = cfg.parts.map((p) => {
+      const partExams = categoryExams.filter((e) => e.part === p.key);
+      const partCompleted = partExams.filter((e) =>
+        (attemptsByExam[String(e._id)] || []).some((a) => FINISHED_STATES.includes(a.status)),
+      ).length;
+      const partInProgress = partExams.some((e) =>
+        (attemptsByExam[String(e._id)] || []).some((a) => a.status === "IN_PROGRESS"),
+      );
+      const status = partExams.length === 0
+        ? "NOT_STARTED"
+        : partInProgress
+          ? "IN_PROGRESS"
+          : partCompleted >= partExams.length
+            ? "COMPLETED"
+            : partCompleted > 0
+              ? "IN_PROGRESS"
+              : "NOT_STARTED";
+      return {
+        key: p.key,
+        label: p.label,
+        available: partExams.length,
+        completed: partCompleted,
+        status,
+      };
+    });
+
+    return {
+      category,
+      label: cfg.label,
+      available: categoryExams.length,
+      completed,
+      inProgress,
+      progressPercent: categoryExams.length ? Math.round((completed / categoryExams.length) * 100) : 0,
+      parts,
+    };
+  });
+
+  return { sections };
+}
+
 export async function getStudentExam(examId: string, studentId: string): Promise<unknown> {
   const assignment = await ExamAssignment.findOne({ examId, studentId });
   if (!assignment) throw new ApiError(403, "This exam has not been assigned to you");
@@ -205,17 +314,38 @@ export async function getStudentExam(examId: string, studentId: string): Promise
 }
 
 export async function startAttempt(examId: string, studentId: string): Promise<unknown> {
-  const assignment = await ExamAssignment.findOne({ examId, studentId });
-  if (!assignment) throw new ApiError(403, "Exam not assigned to you");
   const exam = await Exam.findOne({ _id: examId, deletedAt: null });
   if (!exam) throw new ApiError(404, "Exam not found");
   if (!["PUBLISHED", "SCHEDULED", "COMPLETED"].includes(exam.status)) {
     throw new ApiError(400, "Exam is not available");
   }
-  const now = Date.now();
-  if (exam.startAt && now < new Date(exam.startAt).getTime()) {
+  const teacherId = await resolveTeacherIdForStudent(studentId);
+  let assignment = await ExamAssignment.findOne({ examId, studentId });
+  const isPracticeForStudent =
+    ["PRACTICE", "SECTIONAL"].includes(exam.type) &&
+    exam.status === "PUBLISHED" &&
+    (!teacherId || String(exam.createdBy) === String(teacherId));
+  if (!assignment) {
+    if (!isPracticeForStudent) throw new ApiError(403, "Exam not assigned to you");
+    assignment = await ExamAssignment.create({
+      examId,
+      studentId,
+      assignedBy: exam.createdBy,
+      teacherId,
+      assignedAt: new Date(),
+      status: "ASSIGNED",
+      dueAt: exam.endAt,
+    });
+  }
+  const doesStartWindowBlock = (() => {
+    const now = Date.now();
+    if (exam.startAt && now < new Date(exam.startAt).getTime()) return true;
+    return false;
+  })();
+  if (doesStartWindowBlock) {
     throw new ApiError(400, "Exam has not started yet");
   }
+  const now = Date.now();
   const attemptCount = await ExamAttempt.countDocuments({ examId, studentId });
   if (attemptCount >= exam.attemptLimit) {
     throw new ApiError(400, "Attempt limit reached");
@@ -239,7 +369,7 @@ export async function startAttempt(examId: string, studentId: string): Promise<u
   const attempt = await ExamAttempt.create({
     examId,
     studentId,
-    teacherId: await resolveTeacherIdForStudent(studentId),
+    teacherId,
     attemptNumber,
     startedAt: new Date(),
     expiresAt: new Date(Date.now() + durationSec * 1000),
@@ -303,7 +433,10 @@ export async function submitAttempt(attemptId: string, studentId: string): Promi
   await attempt.save();
   await ExamAssignment.updateOne({ examId: attempt.examId, studentId }, { $set: { status: "COMPLETED" } });
   await afterSubmit(String(attempt._id));
-  await notify(studentId, "SUBMISSION_SUCCESS", "Submission received", "Your examination was submitted successfully.");
+  await notify(studentId, "SUBMISSION_SUCCESS", "Submission received", "Your examination was submitted successfully.", {
+    attemptId: String(attempt._id),
+    examId: String(attempt.examId),
+  });
   return { attempt };
 }
 
@@ -316,7 +449,7 @@ export async function listTeacherSubmissions(
   const exams = await Exam.find({ createdBy: teacherId, deletedAt: null }).select("_id").lean();
   const examIds = exams.map((e) => e._id);
   const filter: Record<string, unknown> = { examId: { $in: examIds }, status: { $ne: "NOT_STARTED" } };
-  if (query.status) filter.status = query.status;
+  if (query.status) filter.status = { $in: query.status.split(",") } as never;
   const total = await ExamAttempt.countDocuments(filter);
   const sort = parseSort(query.sort || "-createdAt", ["createdAt", "status", "finalScore"]);
   const data = await ExamAttempt.find(filter)

@@ -52,7 +52,7 @@ export async function removeStudentFromBatch(batchId: string, studentId: string)
 export async function teacherDashboard(teacherId: string): Promise<unknown> {
   const activeAssignments = await TeacherStudentAssignment.find({ teacherId, status: "ACTIVE", endedAt: null }).select("studentId").lean();
   const studentIds = activeAssignments.map((a) => a.studentId);
-  const [studentCount, batches, exams, assignments, attempts, gradedAttempts, courseCount] = await Promise.all([
+  const [studentCount, batches, exams, assignments, attempts, gradedAttempts, courseCount, pendingAssignments] = await Promise.all([
     User.countDocuments({ _id: { $in: studentIds }, role: "STUDENT", deletedAt: null }),
     Batch.countDocuments({ teacherId, archived: false }),
     Exam.countDocuments({ createdBy: teacherId, deletedAt: null }),
@@ -60,13 +60,14 @@ export async function teacherDashboard(teacherId: string): Promise<unknown> {
     ExamAttempt.countDocuments({ teacherId, status: { $in: ["SUBMITTED", "UNDER_REVIEW"] } }),
     ExamAttempt.countDocuments({ teacherId, status: { $in: ["GRADED", "PUBLISHED"] } }),
     Course.countDocuments({ instructorId: teacherId, active: true }),
+    AssignmentSubmission.countDocuments({ teacherId, isDraft: false, status: { $in: ["SUBMITTED", "RESUBMITTED", "PENDING"] } }),
   ]);
   return {
     studentCount,
     activeBatches: batches,
     totalExams: exams,
     totalAssignments: assignments,
-    pendingGrading: attempts,
+    pendingGrading: attempts + pendingAssignments,
     gradedAttempts,
     courseCount,
   };

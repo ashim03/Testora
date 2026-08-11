@@ -1,4 +1,4 @@
-import { Question, Passage } from "../models";
+import { Question, Passage, MediaAsset } from "../models";
 import { ApiError, parseSort } from "../utils/helpers";
 import { logActivity } from "./notificationService";
 import { verifyTeacherOwnership } from "./userService";
@@ -23,6 +23,7 @@ export async function createQuestion(
   actor: { id: string; role: string },
   ip?: string | null,
 ): Promise<unknown> {
+  await assertAudioOwnership(data, actor);
   const question = await Question.create({
     ...data,
     createdBy: actor.id,
@@ -75,9 +76,20 @@ export async function updateQuestion(id: string, data: Record<string, unknown>, 
   if (question.createdBy.toString() !== String(actor.id)) {
     throw new ApiError(403, "You can only edit your own questions");
   }
+  await assertAudioOwnership(data, actor);
   Object.assign(question, data);
   await question.save();
   return question;
+}
+
+async function assertAudioOwnership(data: Record<string, unknown>, actor: { id: string; role: string }): Promise<void> {
+  const assetId = data.audioAssetId;
+  if (!assetId || actor.role === "SUPER_ADMIN") return;
+  const asset = await MediaAsset.findById(assetId).lean();
+  if (!asset || asset.kind !== "AUDIO") throw new ApiError(400, "Referenced audio asset does not exist");
+  if (String(asset.uploadedBy) !== String(actor.id)) {
+    throw new ApiError(403, "You can only attach audio files you own");
+  }
 }
 
 export async function deleteQuestion(id: string, actor: { id: string; role: string }): Promise<void> {

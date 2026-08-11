@@ -35,7 +35,10 @@ export async function createAssignment(
   });
   await logActivity(actor.id, "CREATE_ASSIGNMENT", "Assignment", assignment._id, { title: assignment.title }, ip);
   for (const sid of studentIds) {
-    await notify(sid, "ASSIGNMENT_CREATED", "New assignment", `A new assignment "${assignment.title}" has been published.`);
+    await notify(sid, "ASSIGNMENT_CREATED", "New assignment", `A new assignment "${assignment.title}" has been published.`, {
+      assignmentId: String(assignment._id),
+      dueAt: assignment.dueAt,
+    });
   }
   return assignment;
 }
@@ -58,7 +61,25 @@ export async function listAssignments(query: AssignmentQuery, teacherId: string)
   const sort = parseSort(query.sort || "-createdAt", ["createdAt", "title", "status", "dueAt"]);
   const total = await Assignment.countDocuments(filter);
   const data = await Assignment.find(filter).sort(sort).skip((page - 1) * limit).limit(limit);
-  return { data, total, page, limit, pages: Math.ceil(total / limit) };
+  const ids = data.map((a) => a._id);
+  const counts = await AssignmentSubmission.aggregate([
+    { $match: { assignmentId: { $in: ids } } },
+    {
+      $group: {
+        _id: "$assignmentId",
+        submissions: { $sum: 1 },
+        pending: { $sum: { $cond: [{ $in: ["$status", ["SUBMITTED", "RESUBMITTED", "PENDING"]] }, 1, 0] } },
+        graded: { $sum: { $cond: [{ $in: ["$status", ["GRADED", "PUBLISHED"]] }, 1, 0] } },
+      },
+    },
+  ]);
+  const countMap = new Map(counts.map((c) => [String(c._id), c]));
+  const out = data.map((a) => {
+    const c = countMap.get(String(a._id)) ?? { submissions: 0, pending: 0, graded: 0 };
+    const doc = typeof a.toObject === "function" ? a.toObject() : a;
+    return { ...doc, submissionCount: c.submissions, pendingCount: c.pending, gradedCount: c.graded };
+  });
+  return { data: out, total, page, limit, pages: Math.ceil(total / limit) };
 }
 
 export async function getAssignment(id: string, teacherId: string, studentId?: string): Promise<unknown> {
@@ -149,7 +170,7 @@ export async function listSubmission(assignmentId: string, query: { page?: numbe
     const ids = assignments.map((a) => a._id);
     filter = { assignmentId: { $in: ids } };
   }
-  if (query.status) filter.status = query.status;
+  if (query.status) filter.status = { $in: query.status.split(",") } as never;
   const total = await AssignmentSubmission.countDocuments(filter);
   const sort = parseSort(query.sort || "-createdAt", ["createdAt", "marks", "status"]);
   const data = await AssignmentSubmission.find(filter).sort(sort).skip((page - 1) * limit).limit(limit).populate("assignmentId").populate("studentId", "firstName lastName email");
@@ -166,7 +187,7 @@ export async function getSubmission(id: string, teacherId: string): Promise<unkn
 
 export async function gradeSubmission(
   submissionId: string,
-  data: { score?: number; feedback?: string; requestResubmission?: boolean; published?: boolean; strengths?: string[]; improvements?: string[] },
+  data: { score?: number; feedback?: string; requestResubmission?: boolean; published?: boolean; strengths?: string[]; improvements?: string[]; returnReason?: string },
   teacherId: string,
 ): Promise<unknown> {
   const submission = await AssignmentSubmission.findById(submissionId);
@@ -174,20 +195,39 @@ export async function gradeSubmission(
   const assignment = await Assignment.findById(submission.assignmentId);
   if (!assignment) throw new ApiError(404, "Assignment not found");
   if (String(assignment.createdBy) !== teacherId) throw new ApiError(403, "Forbidden");
-  if (data.score !== undefined) {
-    submission.marks = data.score;
-    submission.maxMarks = assignment.maxMarks;
-    submission.status = data.published ? "PUBLISHED" : "GRADED";
-  }
-  if (data.feedback !== undefined) submission.feedback = data.feedback;
-  if (data.strengths !== undefined) submission.strengths = data.strengths;
-  if (data.improvements !== undefined) submission.improvements = data.improvements;
   if (data.requestResubmission) {
     submission.status = "RETURNED";
+    submission.returnReason = data.returnReason || "Please review and resubmit.";
+    submission.feedback = data.feedback !== undefined ? data.feedback : submission.feedback;
+  } else {
+    if (data.score !== undefined) {
+      submission.marks = data.score;
+      submission.maxMarks = assignment.maxMarks;
+      submission.status = data.published ? "PUBLISHED" : "GRADED";
+    }
+    if (data.feedback !== undefined) submission.feedback = data.feedback;
+    if (data.strengths !== undefined) submission.strengths = data.strengths;
+    if (data.improvements !== undefined) submission.improvements = data.improvements;
+    if (data.returnReason !== undefined) submission.returnReason = data.returnReason;
   }
   submission.gradedBy = teacherId as unknown as Types.ObjectId;
   submission.gradedAt = new Date();
   await submission.save();
+  if (data.requestResubmission) {
+    await notify(String(submission.studentId), "ASSIGNMENT_RETURNED", "Assignment returned for revision", `Your submission for "${assignment.title}" needs revision.`, {
+      assignmentId: String(assignment._id),
+      submissionId: String(submission._id),
+      reason: submission.returnReason,
+    });
+    await audit("RETURN_ASSIGNMENT_SUBMISSION", {
+      actorId: teacherId,
+      actorRole: "TEACHER",
+      entityType: "AssignmentSubmission",
+      entityId: String(submission._id),
+      after: { status: "RETURNED", reason: submission.returnReason },
+    });
+    return submission;
+  }
   await notify(String(submission.studentId), "ASSIGNMENT_GRADED", "Assignment graded", `Your submission for "${assignment.title}" has been graded.`, {
     assignmentId: String(assignment._id),
     submissionId: String(submission._id),
@@ -218,31 +258,41 @@ export async function studentAssignments(studentId: string, query: { page?: numb
   return { data: enriched, total, page, limit, pages: Math.ceil(total / limit) };
 }
 
-export async function submitAssignment(assignmentId: string, studentId: string, data: { content?: string; files?: string[] }): Promise<unknown> {
+export async function submitAssignment(assignmentId: string, studentId: string, data: { content?: string; files?: string[]; link?: string }): Promise<unknown> {
   const assignment = await Assignment.findOne({ _id: assignmentId, deletedAt: null });
   if (!assignment) throw new ApiError(404, "Assignment not found");
   if (!assignment.studentIds.some((s) => String(s) === studentId)) throw new ApiError(403, "Assignment not assigned to you");
+  const link = (data.link || "").trim();
+  const content = [data.content || "", link ? `Submission link: ${link}` : ""].filter(Boolean).join("\n\n");
   const existing = await AssignmentSubmission.findOne({ assignmentId, studentId });
   if (existing) {
-    existing.content = data.content || existing.content;
+    if (content) existing.content = content;
     if (data.files) existing.files = data.files;
     existing.submittedAt = new Date();
     existing.isDraft = false;
-    existing.status = existing.status === "RETURNED" ? "RESUBMITTED" : "SUBMITTED";
+    existing.status = existing.status === "RETURNED" || existing.status === "RESUBMITTED" ? "RESUBMITTED" : "SUBMITTED";
     await existing.save();
-    await notify(studentId, "SUBMISSION_SUCCESS", "Assignment submitted", `You submitted "${assignment.title}".`);
+    await notify(studentId, "SUBMISSION_SUCCESS", "Assignment submitted", `You submitted "${assignment.title}".`, {
+      assignmentId: String(assignment._id),
+      submissionId: String(existing._id),
+    });
+    await notify(String(assignment.createdBy), "SUBMISSION_RECEIVED", "New submission", `"${assignment.title}" has a new submission.`, { assignmentId: String(assignment._id), studentId });
     return existing;
   }
   const submission = await AssignmentSubmission.create({
     assignmentId,
     studentId,
-    content: data.content || "",
+    content,
     files: data.files || [],
     submittedAt: new Date(),
     isDraft: false,
     status: "SUBMITTED",
     teacherId: assignment.createdBy,
   });
-  await notify(studentId, "SUBMISSION_SUCCESS", "Assignment submitted", `You submitted "${assignment.title}".`);
+  await notify(studentId, "SUBMISSION_SUCCESS", "Assignment submitted", `You submitted "${assignment.title}".`, {
+    assignmentId: String(assignment._id),
+    submissionId: String(submission._id),
+  });
+  await notify(String(assignment.createdBy), "SUBMISSION_RECEIVED", "New submission", `"${assignment.title}" has a new submission.`, { assignmentId: String(assignment._id), studentId });
   return submission;
 }

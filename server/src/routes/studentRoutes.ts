@@ -26,6 +26,8 @@ router.post("/subscription", validateRequest(subscribeSchema as never), student.
 router.post("/subscription/cancel", student.cancelSubscription);
 
 router.get("/exams", student.listExams);
+router.get("/practice", student.listPracticeExams);
+  router.get("/practice/summary", student.sectionalSummary);
 router.get("/exams/:id", student.getExam);
 router.post("/exams/:id/start", student.startExam);
 router.get("/attempts/:id", student.getAttempt);

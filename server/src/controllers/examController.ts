@@ -126,7 +126,8 @@ export const publishAssignment = asyncHandler(async (req: Request, res: Response
 
 export const listAssignmentSubmissions = asyncHandler(async (req: Request, res: Response) => {
   if (!req.user) throw new ApiError(401, "Authentication required");
-  const result = await assignmentService.listSubmission(String(req.params.assignmentId) || "", queryOf(req), req.user.id);
+  const assignmentId = (req.params.assignmentId as string | undefined) || "";
+  const result = await assignmentService.listSubmission(assignmentId, queryOf(req), req.user.id);
   const d = result as { data: unknown; page: number; limit: number; total: number; pages: number };
   res.json({ success: true, message: "Assignment submissions", data: d.data, pagination: { page: d.page, limit: d.limit, total: d.total, pages: d.pages } });
 });

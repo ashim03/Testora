@@ -34,7 +34,7 @@ export function ForgotPasswordPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-brand-50 to-accent-50 px-4 dark:from-slate-950 dark:to-slate-900">
+    <div className="flex min-h-screen items-center justify-center bg-background px-4 py-6">
       <Card className="w-full max-w-sm">
         <CardHeader>
           <CardTitle>Forgot password</CardTitle>

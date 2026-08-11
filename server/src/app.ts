@@ -15,6 +15,7 @@ import courseRoutes from "./routes/courseRoutes";
 import mediaRoutes from "./routes/mediaRoutes";
 import brandingRoutes from "./routes/brandingRoutes";
 import notificationRoutes from "./routes/notificationRoutes";
+import chatRoutes from "./routes/chatRoutes";
 import { apiLimiter } from "./middleware/rateLimit";
 import { sanitizeMongoQuery, sanitizePagination } from "./middleware/sanitize";
 import { notFound, errorHandler } from "./middleware/error";
@@ -62,6 +63,7 @@ export function createApp(): Application {
   api.use("/media", mediaRoutes);
   api.use("/branding", brandingRoutes);
   api.use("/notifications", notificationRoutes);
+  api.use("/chat", chatRoutes);
 
   app.use("/api", api);
 

@@ -6,7 +6,20 @@ import { ApiError } from "../utils/helpers";
 const ALLOWED_MIME: Record<string, string[]> = {
   PROFILE_IMAGE: ["image/png", "image/jpeg", "image/webp"],
   QUESTION_IMAGE: ["image/png", "image/jpeg", "image/webp"],
-  AUDIO: ["audio/mpeg", "audio/wav", "audio/x-wav", "audio/webm", "audio/mp4", "audio/ogg"],
+  AUDIO: [
+    "audio/mpeg",
+    "audio/mp3",
+    "audio/wav",
+    "audio/x-wav",
+    "audio/wave",
+    "audio/webm",
+    "audio/mp4",
+    "audio/m4a",
+    "audio/x-m4a",
+    "audio/aac",
+    "audio/x-aac",
+    "audio/ogg",
+  ],
   DOCUMENT: [
     "application/pdf",
     "application/msword",
@@ -21,7 +34,7 @@ const ALLOWED_MIME: Record<string, string[]> = {
 const EXT_BY_KIND: Record<string, string[]> = {
   PROFILE_IMAGE: [".png", ".jpg", ".jpeg", ".webp"],
   QUESTION_IMAGE: [".png", ".jpg", ".jpeg", ".webp"],
-  AUDIO: [".mp3", ".wav", ".webm", ".m4a", ".ogg"],
+  AUDIO: [".mp3", ".wav", ".webm", ".m4a", ".aac", ".ogg", ".mp4"],
   DOCUMENT: [".pdf", ".doc", ".docx", ".xls", ".xlsx", ".txt", ".csv"],
 };
 

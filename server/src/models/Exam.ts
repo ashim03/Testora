@@ -15,6 +15,7 @@ export interface IExam extends Document {
   title: string;
   type: "PRACTICE" | "SECTIONAL" | "MOCK" | "CUSTOM";
   category: (typeof QUESTION_CATEGORIES)[number];
+  part?: string | null;
   description: string;
   durationSec?: number | null;
   sections: Array<{
@@ -62,6 +63,7 @@ const schema = new mongoose.Schema(
     title: { type: String, required: true, trim: true, maxlength: 200 },
     type: { type: String, enum: ["PRACTICE", "SECTIONAL", "MOCK", "CUSTOM"], default: "PRACTICE" },
     category: { type: String, enum: QUESTION_CATEGORIES, required: true, index: true },
+    part: { type: String, default: null, trim: true, maxlength: 20 },
     description: { type: String, default: "" },
     durationSec: { type: Number, default: null },
     sections: { type: [sectionSchema], default: [] },

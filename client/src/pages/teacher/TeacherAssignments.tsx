@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Send, Users, FileText, Star } from "lucide-react";
+import { Plus, Pencil, Trash2, Send, Users, Paperclip, RotateCcw, ClipboardPen } from "lucide-react";
 import { assignmentsApi } from "../../api/courses";
 import { apiGet } from "../../api/client";
 import { Button } from "../../components/ui/button";
@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogC
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../components/ui/table";
 import { TableEmptyState, TableSkeleton } from "../../components/ui/table-toolbar";
 import { Spinner } from "../../components/ui/feedback";
+import { AssignmentGradeDialog, type AssignmentSubmissionRow } from "../../components/assignments/AssignmentGradeDialog";
 import { getErrorMessage, formatDate, titleCase } from "../../utils";
 
 interface AssignmentRow {
@@ -25,31 +26,21 @@ interface AssignmentRow {
   published: boolean;
   studentIds?: string[];
   batchIds?: string[];
+  submissionCount?: number;
+  pendingCount?: number;
+  gradedCount?: number;
   createdAt: string;
 }
 
 interface StudentRow { _id: string; firstName?: string; lastName?: string; email?: string }
 interface BatchRow { _id: string; name: string }
 
-interface SubmissionRow {
-  _id: string;
-  assignmentId?: { title?: string; _id?: string } | string;
-  studentId?: { firstName?: string; lastName?: string; email?: string } | string;
-  content?: string;
-  files?: string[];
-  status: string;
-  marks?: number | null;
-  maxMarks?: number | null;
-  feedback?: string | null;
-  submittedAt?: string | null;
-}
-
 export function TeacherAssignments() {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<AssignmentRow | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [grading, setGrading] = useState<SubmissionRow | null>(null);
+  const [grading, setGrading] = useState<AssignmentSubmissionRow | null>(null);
 
   const studentsQuery = useQuery({
     queryKey: ["teacher", "students", "all"],
@@ -79,7 +70,7 @@ export function TeacherAssignments() {
     queryFn: async () => {
       if (!selectedId) return [];
       const res = await assignmentsApi.listSubmissions(selectedId, { limit: 100 });
-      return (res.data ?? []) as SubmissionRow[];
+      return (res.data ?? []) as AssignmentSubmissionRow[];
     },
     enabled: !!selectedId,
   });
@@ -146,7 +137,18 @@ export function TeacherAssignments() {
           <CardHeader><CardTitle className="text-base">Assignments</CardTitle></CardHeader>
           <CardContent className="p-0">
             {isLoading ? <TableSkeleton rows={5} /> : !data?.length ? (
-              <TableEmptyState colSpan={5} title="No assignments yet" />
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Title</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Max marks</TableHead>
+                    <TableHead>Due</TableHead>
+                    <TableHead />
+                  </TableRow>
+                </TableHeader>
+                <TableBody><TableEmptyState colSpan={5} title="No assignments yet" /></TableBody>
+              </Table>
             ) : (
               <Table>
                 <TableHeader>
@@ -166,6 +168,17 @@ export function TeacherAssignments() {
                         <TableCell>
                           <button className="font-medium hover:underline" onClick={() => setSelectedId(row._id)}>{row.title}</button>
                           {row.published ? null : <div className="text-xs text-amber-600">Unpublished draft</div>}
+                          {typeof row.pendingCount === "number" && row.pendingCount > 0 && (
+                            <div className="mt-1 flex items-center gap-1 text-xs text-amber-600">
+                              <ClipboardPen className="size-3" /> {row.pendingCount} awaiting review
+                            </div>
+                          )}
+                          {(row.submissionCount ?? 0) > 0 && (
+                            <div className="text-xs text-muted-foreground">
+                              {row.submissionCount} submission{row.submissionCount === 1 ? "" : "s"}
+                              {typeof row.gradedCount === "number" && row.gradedCount > 0 ? ` · ${row.gradedCount} graded` : ""}
+                            </div>
+                          )}
                         </TableCell>
                         <TableCell><Badge variant={row.published ? "success" : "warning"}>{row.published ? titleCase(row.status) : "DRAFT"}</Badge></TableCell>
                         <TableCell>{row.maxMarks ?? "—"}</TableCell>
@@ -192,9 +205,31 @@ export function TeacherAssignments() {
           <CardHeader><CardTitle className="flex items-center gap-2 text-base"><Users className="size-4 text-brand-600" /> Submissions {selectedId ? "for assignment" : ""}</CardTitle></CardHeader>
           <CardContent className="p-0">
             {!selectedId ? (
-              <TableEmptyState colSpan={5} title="Select an assignment" description="Click an assignment title to view its submissions." />
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Student</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Marks</TableHead>
+                    <TableHead>Submitted</TableHead>
+                    <TableHead />
+                  </TableRow>
+                </TableHeader>
+                <TableBody><TableEmptyState colSpan={5} title="Select an assignment" description="Click an assignment title to view its submissions." /></TableBody>
+              </Table>
             ) : subsLoading ? <TableSkeleton rows={4} /> : !submissions?.length ? (
-              <TableEmptyState colSpan={5} title="No submissions yet" />
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Student</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Marks</TableHead>
+                    <TableHead>Submitted</TableHead>
+                    <TableHead />
+                  </TableRow>
+                </TableHeader>
+                <TableBody><TableEmptyState colSpan={5} title="No submissions yet" /></TableBody>
+              </Table>
             ) : (
               <Table>
                 <TableHeader>
@@ -209,14 +244,18 @@ export function TeacherAssignments() {
                 <TableBody>
                   {submissions.map((s) => {
                     const st = typeof s.studentId === "string" ? null : s.studentId;
+                    const hasFiles = (s.files?.length ?? 0) > 0;
                     return (
                       <TableRow key={s._id}>
                         <TableCell className="font-medium">{st ? `${st.firstName ?? ""} ${st.lastName ?? ""}` : "Student"}</TableCell>
-                        <TableCell><Badge variant="secondary">{titleCase(s.status)}</Badge></TableCell>
+                        <TableCell>
+                          <Badge variant={s.status === "RETURNED" ? "warning" : "secondary"}>{titleCase(s.status)}</Badge>
+                          {hasFiles && <span className="ml-2 inline-flex items-center gap-1 text-xs text-muted-foreground" title="Has attachments"><Paperclip className="size-3" /></span>}
+                        </TableCell>
                         <TableCell>{s.marks != null ? `${s.marks}/${s.maxMarks ?? "—"}` : "—"}</TableCell>
                         <TableCell className="text-muted-foreground">{s.submittedAt ? formatDate(s.submittedAt) : "—"}</TableCell>
                         <TableCell className="text-right">
-                          <Button variant="outline" size="sm" onClick={() => setGrading(s)}><Star className="size-3.5" /> Grade</Button>
+                          <Button variant="outline" size="sm" onClick={() => setGrading(s)}><RotateCcw className="size-3.5" /> Review / Grade</Button>
                         </TableCell>
                       </TableRow>
                     );
@@ -238,7 +277,7 @@ export function TeacherAssignments() {
         batches={batchesQuery.data ?? []}
       />
 
-      <GradeDialog submission={grading} onClose={() => setGrading(null)} onSubmit={(body) => grading && gradeMutation.mutate({ id: grading._id, body })} submitting={gradeMutation.isPending} />
+      <AssignmentGradeDialog submission={grading} onClose={() => setGrading(null)} onSubmit={(body) => grading && gradeMutation.mutate({ id: grading._id, body })} submitting={gradeMutation.isPending} />
     </div>
   );
 }
@@ -304,59 +343,6 @@ function AssignmentDialog({ open, onOpenChange, editing, onSubmit, submitting, s
           <DialogFooter>
             <DialogClose asChild><Button type="button" variant="outline">Cancel</Button></DialogClose>
             <Button type="submit" disabled={submitting}>{submitting ? <Spinner className="size-4" /> : null} {editing ? "Save changes" : "Create"}</Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-function GradeDialog({ submission, onClose, onSubmit, submitting }: {
-  submission: SubmissionRow | null;
-  onClose: () => void;
-  onSubmit: (body: Record<string, unknown>) => void;
-  submitting: boolean;
-}) {
-  if (!submission) return null;
-  const st = typeof submission.studentId === "string" ? null : submission.studentId;
-  return (
-    <Dialog open onOpenChange={onClose}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader><DialogTitle>Grade submission</DialogTitle></DialogHeader>
-        <div className="mb-3 flex items-center gap-3 text-sm">
-          <FileText className="size-4 text-muted-foreground" />
-          <span className="font-medium">{st ? `${st.firstName ?? ""} ${st.lastName ?? ""}` : "Student"}</span>
-        </div>
-        {submission.content && (
-          <div className="mb-3 rounded-md border bg-muted/40 p-3">
-            <p className="mb-1 text-xs font-semibold text-muted-foreground">Student response</p>
-            <p className="whitespace-pre-wrap text-sm">{submission.content}</p>
-          </div>
-        )}
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            const fd = new FormData(e.currentTarget);
-            onSubmit({
-              score: Number(fd.get("score")),
-              feedback: (fd.get("feedback") as string) || undefined,
-              strengths: (fd.get("strengths") as string)?.split(",").map((s) => s.trim()).filter(Boolean) || [],
-              improvements: (fd.get("improvements") as string)?.split(",").map((s) => s.trim()).filter(Boolean) || [],
-              published: true,
-            });
-          }}
-          className="space-y-4"
-        >
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5"><Label>Score</Label><Input name="score" type="number" step="0.5" required defaultValue={submission.marks ?? undefined} /></div>
-            <div className="space-y-1.5"><Label>Max</Label><Input value={submission.maxMarks ?? "—"} disabled /></div>
-          </div>
-          <div className="space-y-1.5"><Label>Feedback</Label><textarea name="feedback" className="w-full rounded-md border px-3 py-2 text-sm" rows={3} defaultValue={submission.feedback ?? ""} /></div>
-          <div className="space-y-1.5"><Label>Strengths (comma separated)</Label><Input name="strengths" placeholder="Grammar, structure" /></div>
-          <div className="space-y-1.5"><Label>Areas to improve (comma separated)</Label><Input name="improvements" placeholder="Vocabulary, cohesion" /></div>
-          <DialogFooter>
-            <DialogClose asChild><Button type="button" variant="outline">Cancel</Button></DialogClose>
-            <Button type="submit" disabled={submitting}>{submitting ? <Spinner className="size-4" /> : null} Save grade</Button>
           </DialogFooter>
         </form>
       </DialogContent>

@@ -6,9 +6,9 @@ import { useAuthStore } from "../../store/auth";
 import { useBrandingStore, type Branding } from "../../store/branding";
 import { navGroupsFor, homePathForRole } from "../../config/navigation";
 import { cn, initialOf } from "../../utils";
-import { apiGet, apiPost } from "../../api/client";
+import { apiGet, apiPatch, apiPost } from "../../api/client";
 import { toast } from "sonner";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
@@ -22,11 +22,15 @@ import {
 } from "../ui/dropdown-menu";
 import { useTheme } from "../../hooks/useTheme";
 import { PageSpinner } from "../ui/feedback";
+import { notificationTarget } from "../../utils/notificationTargets";
 
 interface NotificationRow {
   _id: string;
+  type?: string;
   title: string;
-  message: string;
+  body?: string;
+  message?: string;
+  data?: Record<string, unknown>;
   read: boolean;
   createdAt: string;
 }
@@ -40,8 +44,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       <Sidebar collapsed={collapsed} onToggle={() => setCollapsed((c) => !c)} />
       <div className={cn("flex min-h-screen flex-col transition-all", collapsed ? "lg:pl-16" : "lg:pl-60")}>
         <Topbar />
-        <main className="flex-1 px-4 py-6 pb-24 sm:px-6 lg:px-8 lg:pb-6">{children}</main>
+        <main className="mx-auto flex w-full max-w-[1440px] flex-1 px-4 py-5 pb-28 sm:px-6 lg:px-8 lg:py-7 lg:pb-8">
+          <div className="w-full">{children}</div>
+        </main>
       </div>
+      <MobileNav />
     </div>
   );
 }
@@ -92,11 +99,11 @@ function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => 
   return (
     <aside
       className={cn(
-        "fixed inset-y-0 left-0 z-40 hidden flex-col border-r bg-card transition-all lg:flex",
+        "fixed inset-y-0 left-0 z-40 hidden flex-col border-r bg-card/95 shadow-[1px_0_0_rgb(15_23_42/0.02)] backdrop-blur transition-all lg:flex",
         collapsed ? "w-16" : "w-60",
       )}
     >
-      <div className={cn("flex h-14 items-center gap-2 border-b px-4", collapsed && "justify-center px-0")}>
+      <div className={cn("flex h-16 items-center gap-2 border-b px-4", collapsed && "justify-center px-0")}>
         <Brand compact={collapsed} />
         {!collapsed && (
           <div className="min-w-0">
@@ -106,11 +113,11 @@ function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => 
         )}
       </div>
 
-      <nav className="flex-1 space-y-6 overflow-y-auto scrollbar-thin p-3">
+      <nav className="flex-1 space-y-5 overflow-y-auto scrollbar-thin p-3">
         {groups.map((group) => (
           <div key={group.label}>
             {!collapsed && (
-              <p className="mb-1 px-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <p className="mb-1.5 px-2 text-[11px] font-semibold uppercase text-muted-foreground">
                 {group.label}
               </p>
             )}
@@ -154,8 +161,8 @@ function NavButton({
         title={label}
         aria-current={current ? "page" : undefined}
         className={cn(
-          "flex w-full items-center gap-3 rounded-md px-2 py-2 text-sm transition-colors hover:bg-muted",
-          current ? "bg-primary/10 font-medium text-primary" : "text-muted-foreground",
+          "flex h-9 w-full items-center gap-3 rounded-md border-l-2 border-transparent px-2 text-sm transition-all hover:bg-muted/80",
+          current ? "border-primary bg-primary/10 font-semibold text-primary" : "text-muted-foreground",
           collapsed && "justify-center px-0",
         )}
       >
@@ -183,7 +190,7 @@ function ItemButton({
     <button
       onClick={onClick}
       className={cn(
-        "mb-1 flex w-full items-center gap-2 rounded-md px-2 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted",
+        "mb-1 flex h-9 w-full items-center gap-2 rounded-md px-2 text-sm text-muted-foreground transition-colors hover:bg-muted/80",
         destructive && "hover:text-destructive",
         collapsed && "justify-center px-0",
       )}
@@ -209,17 +216,17 @@ function Topbar() {
   };
 
   return (
-    <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b bg-background/80 px-4 backdrop-blur sm:px-6">
-      <div className="hidden min-w-0 items-center gap-2 md:flex">
+    <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b bg-background/90 px-4 backdrop-blur-xl sm:px-6">
+      <div className="flex min-w-0 items-center gap-2 md:flex">
         <Brand compact={false} />
-        <div className="min-w-0">
+        <div className="hidden min-w-0 min-[420px]:block">
           <p className="truncate text-sm font-semibold leading-tight">{branding?.name || "Testora"}</p>
           <p className="truncate text-[11px] text-muted-foreground leading-tight">{branding?.tagline || (user?.role ?? "").toLowerCase()}</p>
         </div>
       </div>
 
       <form
-        className="hidden w-64 sm:block"
+        className="hidden w-72 sm:block"
         onSubmit={(e) => {
           e.preventDefault();
           if (q.trim()) navigate(`/search?q=${encodeURIComponent(q.trim())}`);
@@ -227,14 +234,14 @@ function Topbar() {
       >
         <div className="relative">
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search..." className="pl-9" aria-label="Search" />
+          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search..." className="h-10 pl-9" aria-label="Search" />
         </div>
       </form>
 
       <div className="ms-auto flex items-center gap-1">
         <ThemeToggle />
         <NotificationsDropdown />
-        <Button variant="ghost" size="icon" aria-label="Messages" onClick={() => navigate(`${home}/notifications`)}>
+        <Button variant="ghost" size="icon" aria-label="Messages" onClick={() => navigate(`${home}/chat`)}>
           <MessageSquare className="size-4" />
         </Button>
         <DropdownMenu>
@@ -246,32 +253,90 @@ function Topbar() {
               </Avatar>
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-60">
-            <DropdownMenuLabel className="px-2">
-              <div className="font-semibold">{user?.firstName} {user?.lastName}</div>
-              <div className="text-xs font-normal text-muted-foreground">{user?.email}</div>
+          <DropdownMenuContent align="end" className="w-72 p-2">
+            <DropdownMenuLabel className="p-2">
+              <div className="flex items-center gap-3">
+                <Avatar className="size-10">
+                  <AvatarImage src={user?.avatarUrl ?? undefined} />
+                  <AvatarFallback>{initialOf(user?.firstName)}</AvatarFallback>
+                </Avatar>
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm font-semibold">{user?.firstName} {user?.lastName}</div>
+                  <div className="truncate text-xs font-normal text-muted-foreground">{user?.email}</div>
+                </div>
+              </div>
+              <div className="mt-3 inline-flex rounded-md bg-primary/10 px-2 py-1 text-[11px] font-semibold text-primary">
+                {roleLabel(user?.role)}
+              </div>
             </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => navigate(home)} className="px-2 py-1.5 text-sm outline-none hover:bg-muted cursor-pointer">
+            <DropdownMenuSeparator className="-mx-2 my-2 h-px bg-border" />
+            <DropdownMenuItem onClick={() => navigate(home)}>
               <LayoutDashboard className="size-4" /> Dashboard
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => navigate(`${home}/profile`)} className="px-2 py-1.5 text-sm outline-none hover:bg-muted cursor-pointer">
+            <DropdownMenuItem onClick={() => navigate(`${home}/profile`)}>
               <User className="size-4" /> My profile
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => navigate(`${home}/notifications`)} className="px-2 py-1.5 text-sm outline-none hover:bg-muted cursor-pointer">
+            <DropdownMenuItem onClick={() => navigate(`${home}/chat`)}>
+              <MessageSquare className="size-4" /> Messages
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => navigate(`${home}/notifications`)}>
               <Bell className="size-4" /> Notifications
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => navigate(`${home}/settings`)} className="px-2 py-1.5 text-sm outline-none hover:bg-muted cursor-pointer">
+            <DropdownMenuItem onClick={() => navigate(`${home}/settings`)}>
               <Settings className="size-4" /> Settings
             </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={logout} className="px-2 py-1.5 text-sm outline-none hover:bg-red-50 dark:hover:bg-red-950/40 cursor-pointer text-destructive">
+            <DropdownMenuSeparator className="-mx-2 my-2 h-px bg-border" />
+            <DropdownMenuItem onClick={logout} className="text-destructive focus:bg-destructive/10 focus:text-destructive">
               <LogOut className="size-4" /> Sign out
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
     </header>
+  );
+}
+
+function roleLabel(role?: string): string {
+  if (role === "SUPER_ADMIN") return "Super Admin";
+  if (role === "TEACHER") return "Teacher";
+  if (role === "STUDENT") return "Student";
+  return "Account";
+}
+
+function MobileNav() {
+  const user = useAuthStore((s) => s.user);
+  const groups = navGroupsFor(user?.role);
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const items = groups.flatMap((group) => group.items).slice(0, 5);
+
+  if (!items.length) return null;
+
+  return (
+    <nav className="fixed inset-x-0 bottom-0 z-40 border-t bg-card/95 px-2 pb-[calc(env(safe-area-inset-bottom)+0.35rem)] pt-1.5 shadow-[0_-10px_30px_-24px_rgb(15_23_42/0.35)] backdrop-blur lg:hidden">
+      <ul className="grid grid-cols-5 gap-1">
+        {items.map((item) => {
+          const current = item.end ? pathname === item.to : pathname.startsWith(item.to);
+          const Icon = item.icon;
+          return (
+            <li key={item.to}>
+              <button
+                type="button"
+                onClick={() => navigate(item.to)}
+                aria-current={current ? "page" : undefined}
+                className={cn(
+                  "flex h-14 w-full flex-col items-center justify-center gap-1 rounded-md px-1 text-[11px] font-medium transition-colors",
+                  current ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted/80",
+                )}
+              >
+                <Icon className="size-4" />
+                <span className="w-full truncate text-center">{item.label}</span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </nav>
   );
 }
 
@@ -296,6 +361,7 @@ function ThemeToggle() {
 function NotificationsDropdown() {
   const user = useAuthStore((s) => s.user);
   const navigate = useNavigate();
+  const qc = useQueryClient();
   const home = homePathForRole(user?.role);
 
   const { data, isLoading } = useQuery({
@@ -305,9 +371,37 @@ function NotificationsDropdown() {
       return res.data ?? [];
     },
     enabled: !!user,
+    refetchInterval: 30000,
   });
 
   const unread = data?.filter((n) => !n.read).length ?? 0;
+  const markAllRead = useMutation({
+    mutationFn: async () => apiPost("/notifications/read-all"),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["header", "notifications"] });
+      qc.invalidateQueries({ queryKey: ["notifications"] });
+      qc.invalidateQueries({ queryKey: ["student", "notifications"] });
+    },
+  });
+
+  const markRead = useMutation({
+    mutationFn: async (id: string) => apiPatch(`/notifications/${id}/read`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["header", "notifications"] });
+      qc.invalidateQueries({ queryKey: ["notifications"] });
+      qc.invalidateQueries({ queryKey: ["student", "notifications"] });
+    },
+  });
+
+  async function openNotification(notification: NotificationRow) {
+    if (!notification.read) {
+      await apiPatch(`/notifications/${notification._id}/read`).catch(() => undefined);
+      qc.invalidateQueries({ queryKey: ["header", "notifications"] });
+      qc.invalidateQueries({ queryKey: ["notifications"] });
+      qc.invalidateQueries({ queryKey: ["student", "notifications"] });
+    }
+    navigate(notificationTarget(notification, user?.role));
+  }
 
   return (
     <DropdownMenu>
@@ -321,21 +415,43 @@ function NotificationsDropdown() {
           )}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-80">
-        <DropdownMenuLabel>Notifications</DropdownMenuLabel>
+      <DropdownMenuContent align="end" className="w-96 p-2">
+        <DropdownMenuLabel className="flex items-center justify-between gap-3 p-2">
+          <span className="text-sm font-semibold">Notifications</span>
+          {unread > 0 ? (
+            <button
+              type="button"
+              onClick={() => markAllRead.mutate()}
+              className="rounded-md px-2 py-1 text-xs font-semibold text-primary transition-colors hover:bg-primary/10"
+            >
+              Mark all read
+            </button>
+          ) : null}
+        </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <div className="max-h-72 overflow-y-auto">
           {isLoading ? (
             <div className="px-2 py-3 text-sm text-muted-foreground"><PageSpinner /></div>
           ) : !data?.length ? (
-            <div className="px-2 py-3 text-sm text-muted-foreground">No notifications yet.</div>
+            <div className="px-3 py-8 text-center text-sm text-muted-foreground">No notifications yet.</div>
           ) : (
             data.map((n) => (
-              <div key={n._id} className="flex gap-2 border-b px-2 py-2 text-sm last:border-0">
-                <span className={cn("mt-1 size-2 shrink-0 rounded-full", n.read ? "bg-muted-foreground/40" : "bg-brand-500")} />
-                <div className="min-w-0">
-                  <p className="font-medium">{n.title}</p>
-                  <p className="truncate text-xs text-muted-foreground">{n.message}</p>
+              <div key={n._id} className={cn("flex gap-3 rounded-md px-2 py-2 text-sm", !n.read && "bg-primary/5")}>
+                <span className={cn("mt-2 size-2 shrink-0 rounded-full", n.read ? "bg-muted-foreground/30" : "bg-primary")} />
+                <div className="min-w-0 flex-1">
+                  <button type="button" onClick={() => void openNotification(n)} className="block w-full text-left">
+                    <p className="truncate font-medium">{n.title}</p>
+                    <p className="line-clamp-2 text-xs leading-5 text-muted-foreground">{n.body || n.message}</p>
+                  </button>
+                  {!n.read ? (
+                    <button
+                      type="button"
+                      onClick={() => markRead.mutate(n._id)}
+                      className="mt-1 text-xs font-semibold text-primary hover:underline"
+                    >
+                      Mark as read
+                    </button>
+                  ) : null}
                 </div>
               </div>
             ))

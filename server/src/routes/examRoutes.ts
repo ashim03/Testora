@@ -27,6 +27,7 @@ router.patch("/assignments/:id", exams.updateAssignment);
 router.delete("/assignments/:id", exams.deleteAssignment);
 router.post("/assignments/:id/publish", exams.publishAssignment);
 router.get("/assignments/:assignmentId/submissions", exams.listAssignmentSubmissions);
+router.get("/assignment-submissions", exams.listAssignmentSubmissions);
 router.post("/assignment-submissions/:id/grade", exams.gradeAssignmentSubmission);
 router.get("/teacher/:id", exams.getExamForTeacher);
 router.get("/:id", exams.getExam);

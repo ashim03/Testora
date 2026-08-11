@@ -170,7 +170,10 @@ export async function gradeAttemptManually(
   });
   await logActivity(actor.id, "GRADE_ATTEMPT", "ExamAttempt", attempt._id, {}, ip);
   if (!data.saveAsDraft && !data.requestResubmission) {
-    await notify(studentId, "TEACHER_FEEDBACK", "Feedback ready", `Your test "${exam.title}" has been graded.`);
+    await notify(studentId, "TEACHER_FEEDBACK", "Feedback ready", `Your test "${exam.title}" has been graded.`, {
+      attemptId: String(attempt._id),
+      examId: String(exam._id),
+    });
   }
   return { attempt, grade };
 }
@@ -220,7 +223,10 @@ export async function publishResult(attemptId: string, actor: { id: string; role
     entityId: attemptId,
     after: { finalScore, published: true },
   });
-  await notify(attempt.studentId.toString(), "RESULT_PUBLISHED", "Result published", `Your result for "${exam.title}" has been published.`);
+  await notify(attempt.studentId.toString(), "RESULT_PUBLISHED", "Result published", `Your result for "${exam.title}" has been published.`, {
+    attemptId: String(attempt._id),
+    examId: String(exam._id),
+  });
   await logActivity(actor.id, "PUBLISH_RESULT", "Result", attempt._id, { examId: attempt.examId }, ip);
   return { attempt, result: { finalScore, percentage, practiceBand: attempt.practiceBand, estimatedPteScore: attempt.estimatedPteScore } };
 }

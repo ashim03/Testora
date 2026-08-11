@@ -36,6 +36,25 @@ export const listExams = asyncHandler(async (req: Request, res: Response) => {
   res.json({ success: true, message: "My exams", data: d.data, pagination: { page: d.page, limit: d.limit, total: d.total, pages: d.pages } });
 });
 
+export const listPracticeExams = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.user) throw new ApiError(401, "Authentication required");
+  const result = await examService.listPracticeExams(req.user.id, {
+    page: Number(req.query.page || 1),
+    limit: Number(req.query.limit || 10),
+    search: String(req.query.search || ""),
+    category: String(req.query.category || ""),
+    part: String(req.query.part || ""),
+  });
+  const d = result as { data: unknown; page: number; limit: number; total: number; pages: number };
+  res.json({ success: true, message: "Practice tests", data: d.data, pagination: { page: d.page, limit: d.limit, total: d.total, pages: d.pages } });
+});
+
+export const sectionalSummary = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.user) throw new ApiError(401, "Authentication required");
+  const data = await examService.getSectionalPracticeSummary(req.user.id);
+  res.json({ success: true, message: "Sectional practice summary", data });
+});
+
 export const getExam = asyncHandler(async (req: Request, res: Response) => {
   if (!req.user) throw new ApiError(401, "Authentication required");
   const data = await examService.getStudentExam(String(req.params.id), req.user.id);

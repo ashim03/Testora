@@ -95,6 +95,7 @@ export interface UploadResult {
   url?: string;
   publicId?: string;
   provider?: string;
+  assetId?: string;
 }
 
 export async function uploadFile(
@@ -113,6 +114,34 @@ export async function uploadFile(
   });
   if (!data.success || !data.data?.url) throw new Error(data.message || "Upload failed");
   return data.data;
+}
+
+export async function listAudioFiles(): Promise<Array<{
+  assetId: string;
+  url: string;
+  mimeType: string;
+  size: number;
+  provider?: string;
+  createdAt?: string;
+}>> {
+  const { data } = await api.get<ApiResponse<Array<{
+    assetId: string;
+    url: string;
+    mimeType: string;
+    size: number;
+    provider?: string;
+    createdAt?: string;
+  }>>>("/media/audio");
+  return data.data ?? [];
+}
+
+export async function deleteAudioFile(assetId: string): Promise<void> {
+  await api.delete<ApiResponse>(`/media/audio/${assetId}`);
+}
+
+export async function fetchAuthBlob(url: string): Promise<Blob> {
+  const { data } = await api.get<Blob>(url, { responseType: "blob" });
+  return data;
 }
 
 export default api;

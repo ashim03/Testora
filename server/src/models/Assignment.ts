@@ -129,6 +129,7 @@ const submissionSchema = new mongoose.Schema(
       index: true,
     },
     submittedReason: { type: String, default: null },
+    returnReason: { type: String, default: null },
     gradedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
     gradedAt: { type: Date, default: null },
     published: { type: Boolean, default: false },

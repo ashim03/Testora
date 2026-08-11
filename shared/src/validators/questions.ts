@@ -24,6 +24,14 @@ export const acceptedAnswersSchema = z
   .array(z.string().trim().min(1).max(200))
   .max(20);
 
+const audioPlayRulesSchema = z
+  .object({
+    maxPlays: z.number().int().positive().max(50).nullable().optional(),
+    allowSeek: z.boolean().optional(),
+  })
+  .optional()
+  .nullable();
+
 export const createQuestionSchema = z.object({
   category: z.enum(QUESTION_CATEGORIES as unknown as [string, ...string[]]),
   type: z.enum(QUESTION_TYPES as unknown as [string, ...string[]]),
@@ -31,7 +39,17 @@ export const createQuestionSchema = z.object({
   instructions: z.string().max(2000).optional().default(""),
   passage: z.string().max(30000).optional().default(""),
   passageId: z.string().optional().nullable(),
-  audioUrl: z.string().url().optional().nullable(),
+  audioUrl: z
+    .string()
+    .trim()
+    .min(1)
+    .max(1000)
+    .optional()
+    .nullable()
+    .refine((v) => !v || /^(https?:\/\/|\/|data:)/.test(v), { message: "audioUrl must be an absolute URL, relative path or data URI" }),
+  audioAssetId: z.string().optional().nullable(),
+  audioDuration: z.number().int().positive().max(7200).optional().nullable(),
+  audioPlayRules: audioPlayRulesSchema,
   imageUrl: z.string().url().optional().nullable(),
   videoUrl: z.string().url().optional().nullable(),
   options: questionOptionSchema.optional(),
@@ -55,7 +73,6 @@ export const createQuestionSchema = z.object({
     )
     .optional()
     .default([]),
-  audioDuration: z.number().positive().optional(),
   correctAnswerKeys: z.array(z.string()).max(12).optional(),
 });
 

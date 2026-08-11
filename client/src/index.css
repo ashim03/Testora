@@ -4,38 +4,38 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222 47% 11%;
+    --background: 210 29% 97%;
+    --foreground: 222 42% 10%;
     --card: 0 0% 100%;
     --card-foreground: 222 47% 11%;
-    --muted: 210 40% 96%;
-    --muted-foreground: 215 16% 47%;
-    --border: 214 32% 91%;
-    --input: 214 32% 91%;
-    --primary: 221 83% 53%;
+    --muted: 214 32% 93%;
+    --muted-foreground: 215 14% 40%;
+    --border: 214 28% 88%;
+    --input: 214 28% 84%;
+    --primary: 221 70% 42%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 210 40% 96%;
+    --secondary: 210 24% 92%;
     --secondary-foreground: 222 47% 11%;
-    --accent: 173 80% 40%;
+    --accent: 174 72% 34%;
     --accent-foreground: 0 0% 100%;
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
     --popover: 0 0% 100%;
     --popover-foreground: 222 47% 11%;
-    --ring: 221 83% 53%;
-    --radius: 0.9rem;
+    --ring: 221 70% 42%;
+    --radius: 0.5rem;
   }
 
   .dark {
-    --background: 222 47% 6%;
+    --background: 222 34% 7%;
     --foreground: 213 31% 91%;
-    --card: 222 44% 9%;
+    --card: 222 32% 10%;
     --card-foreground: 210 40% 98%;
-    --muted: 217 33% 14%;
-    --muted-foreground: 215 20% 65%;
-    --border: 217 33% 18%;
-    --input: 217 33% 20%;
-    --primary: 217 91% 60%;
+    --muted: 218 25% 16%;
+    --muted-foreground: 216 15% 70%;
+    --border: 218 22% 20%;
+    --input: 218 22% 23%;
+    --primary: 217 78% 62%;
     --primary-foreground: 222 47% 6%;
     --accent: 173 60% 40%;
     --accent-foreground: 0 0% 100%;
@@ -53,11 +53,24 @@
   }
   body {
     @apply bg-background text-foreground antialiased;
+    min-width: 320px;
     font-feature-settings: "rlig" 1, "calt" 1;
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection {
+    @apply bg-primary/15 text-foreground;
+  }
+
+  h1,
+  h2,
+  h3 {
+    @apply text-balance;
   }
 }
 
 @layer utilities {
   .scrollbar-thin::-webkit-scrollbar { width: 8px; height: 8px; }
   .scrollbar-thin::-webkit-scrollbar-thumb { @apply rounded bg-muted-foreground/20; }
+  .text-balance { text-wrap: balance; }
 }

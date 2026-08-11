@@ -59,6 +59,7 @@ const adminNav: NavGroup[] = [
   {
     label: "System",
     items: [
+      { label: "Messages", to: "/admin/chat", icon: MessageSquare },
       { label: "Reports", to: "/admin/reports", icon: BarChart3 },
       { label: "Audit logs", to: "/admin/audit-logs", icon: ScrollText },
       { label: "Settings", to: "/admin/settings", icon: Settings },
@@ -73,6 +74,7 @@ const teacherNav: NavGroup[] = [
     items: [
       { label: "My students", to: "/teacher/students", icon: Users },
       { label: "Batches", to: "/teacher/batches", icon: Layers },
+      { label: "Messages", to: "/teacher/chat", icon: MessageSquare },
     ],
   },
   {
@@ -106,6 +108,7 @@ const studentNav: NavGroup[] = [
   {
     label: "Account",
     items: [
+      { label: "Messages", to: "/student/chat", icon: MessageSquare },
       { label: "Notifications", to: "/student/notifications", icon: Bell },
       { label: "Subscription", to: "/student/subscription", icon: CreditCard },
       { label: "Profile", to: "/student/profile", icon: User },
