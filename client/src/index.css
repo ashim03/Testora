@@ -69,6 +69,68 @@
   }
 }
 
+@layer components {
+  .portal-shell {
+    position: relative;
+    isolation: isolate;
+    overflow-x: hidden;
+  }
+
+  .portal-background {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background:
+      linear-gradient(180deg, hsl(var(--background) / 0.72), hsl(var(--background) / 0.94) 42%, hsl(var(--background))),
+      radial-gradient(circle at 16% 8%, hsl(var(--accent) / 0.14), transparent 28rem),
+      radial-gradient(circle at 88% 18%, hsl(var(--primary) / 0.12), transparent 30rem),
+      var(--portal-backdrop);
+    background-position: center top;
+    background-size: cover;
+    background-repeat: no-repeat;
+  }
+
+  .dark .portal-background {
+    background:
+      linear-gradient(180deg, hsl(var(--background) / 0.84), hsl(var(--background) / 0.95) 40%, hsl(var(--background))),
+      radial-gradient(circle at 16% 8%, hsl(var(--accent) / 0.12), transparent 28rem),
+      radial-gradient(circle at 88% 18%, hsl(var(--primary) / 0.14), transparent 30rem),
+      var(--portal-backdrop);
+    background-position: center top;
+    background-size: cover;
+    background-repeat: no-repeat;
+    filter: saturate(0.85) brightness(0.78);
+  }
+
+  .auth-shell {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+  }
+
+  .auth-shell::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    background:
+      linear-gradient(90deg, hsl(var(--background) / 0.12), hsl(var(--background) / 0.92) 52%, hsl(var(--background))),
+      var(--portal-backdrop);
+    background-position: center;
+    background-size: cover;
+  }
+
+  .dark .auth-shell::before {
+    background:
+      linear-gradient(90deg, hsl(var(--background) / 0.36), hsl(var(--background) / 0.94) 52%, hsl(var(--background))),
+      var(--portal-backdrop);
+    background-position: center;
+    background-size: cover;
+    filter: saturate(0.9) brightness(0.72);
+  }
+}
+
 @layer utilities {
   .scrollbar-thin::-webkit-scrollbar { width: 8px; height: 8px; }
   .scrollbar-thin::-webkit-scrollbar-thumb { @apply rounded bg-muted-foreground/20; }

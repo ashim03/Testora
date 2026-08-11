@@ -120,6 +120,11 @@ export const listAuditLogs = asyncHandler(async (req: Request, res: Response) =>
   res.json({ success: true, message: "Audit logs", data });
 });
 
+export const listBatches = asyncHandler(async (_req: Request, res: Response) => {
+  const data = await reportService.listBatchesForAdmin();
+  res.json({ success: true, message: "Batches", data });
+});
+
 export const reports = asyncHandler(async (_req: Request, res: Response) => {
   const data = await reportService.adminReports();
   res.json({ success: true, message: "Admin reports", data });

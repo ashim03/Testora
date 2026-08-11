@@ -48,6 +48,7 @@ router.post("/courses", validateRequest(createCourseSchema as never), admin.crea
 router.get("/categories", admin.listCategories);
 router.post("/categories", validateRequest(categorySchema as never), admin.createCategory);
 
+router.get("/batches", admin.listBatches);
 router.get("/audit-logs", admin.listAuditLogs);
 router.get("/reports", admin.reports);
 

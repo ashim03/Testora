@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import type { CSSProperties } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -14,6 +15,7 @@ import { Label } from "../../components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../components/ui/card";
 import { Spinner } from "../../components/ui/feedback";
 import { getErrorMessage } from "../../utils";
+import portalBackdrop from "../../assets/portal-ai-background.png";
 
 const schema = z.object({
   email: z.string().email("Enter a valid email"),
@@ -61,8 +63,8 @@ export function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background px-4 py-6 sm:px-6 lg:grid lg:grid-cols-[minmax(0,1fr)_480px] lg:p-0">
-      <section className="hidden min-h-screen flex-col justify-between border-r bg-card px-10 py-10 lg:flex">
+    <div className="auth-shell min-h-screen bg-background px-4 py-6 sm:px-6 lg:grid lg:grid-cols-[minmax(0,1fr)_480px] lg:p-0" style={{ "--portal-backdrop": `url(${portalBackdrop})` } as CSSProperties}>
+      <section className="relative z-10 hidden min-h-screen flex-col justify-between border-r bg-card/20 px-10 py-10 backdrop-blur-[2px] lg:flex">
         <div className="flex items-center gap-3">
           {branding?.logoUrl ? (
             <img src={branding.logoUrl} alt={branding.name || "logo"} className="size-10 rounded-lg object-cover" />
@@ -78,12 +80,12 @@ export function LoginPage() {
         </div>
 
         <div className="max-w-lg space-y-6">
-          <div className="inline-flex items-center gap-2 rounded-md border bg-background px-3 py-1.5 text-xs font-semibold text-muted-foreground">
+          <div className="inline-flex items-center gap-2 rounded-md border bg-background/80 px-3 py-1.5 text-xs font-semibold text-muted-foreground shadow-card backdrop-blur-xl">
             <ShieldCheck className="size-4 text-accent-700" />
             Secure practice and assessment workspace
           </div>
           <div className="space-y-3">
-            <h1 className="text-4xl font-bold tracking-normal">Focused exam operations for every role.</h1>
+            <h1 className="max-w-xl text-4xl font-bold tracking-normal text-foreground drop-shadow-sm">Focused exam operations for every role.</h1>
             <p className="max-w-md text-sm leading-6 text-muted-foreground">
               Manage IELTS and PTE courses, exams, submissions, grading, and progress from one structured dashboard.
             </p>
@@ -92,7 +94,7 @@ export function LoginPage() {
 
         <div className="grid max-w-xl grid-cols-3 gap-3">
           {["Admin", "Teacher", "Student"].map((role) => (
-            <div key={role} className="rounded-lg border bg-background p-4">
+            <div key={role} className="rounded-lg border bg-background/80 p-4 shadow-card backdrop-blur-xl">
               <BookOpenCheck className="mb-3 size-5 text-primary" />
               <p className="text-sm font-semibold">{role}</p>
               <p className="text-xs text-muted-foreground">Workspace</p>
@@ -101,7 +103,7 @@ export function LoginPage() {
         </div>
       </section>
 
-      <main className="flex min-h-[calc(100vh-3rem)] items-center justify-center lg:min-h-screen">
+      <main className="relative z-10 flex min-h-[calc(100vh-3rem)] items-center justify-center lg:min-h-screen lg:bg-background/70 lg:backdrop-blur-xl">
         <div className="w-full max-w-sm">
           <div className="mb-6 text-center lg:hidden">
             {branding?.logoUrl ? (
@@ -116,7 +118,7 @@ export function LoginPage() {
               {branding?.tagline || "IELTS and PTE test preparation platform"}
             </p>
           </div>
-          <Card>
+          <Card className="bg-card/95 shadow-card-hover backdrop-blur-xl">
             <CardHeader>
               <CardTitle>Sign in</CardTitle>
               <CardDescription>Enter your credentials to continue.</CardDescription>

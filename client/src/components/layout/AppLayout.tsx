@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
+import type { CSSProperties } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { LogOut, Bell, ChevronLeft, ChevronRight, Search, Sun, Moon, Monitor, MessageSquare, LayoutDashboard, User, Settings } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import portalBackdrop from "../../assets/portal-ai-background.png";
 import { useAuthStore } from "../../store/auth";
 import { useBrandingStore, type Branding } from "../../store/branding";
 import { navGroupsFor, homePathForRole } from "../../config/navigation";
@@ -40,9 +42,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   useActiveBranding();
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="portal-shell min-h-screen bg-background" style={{ "--portal-backdrop": `url(${portalBackdrop})` } as CSSProperties}>
+      <div className="portal-background" aria-hidden="true" />
       <Sidebar collapsed={collapsed} onToggle={() => setCollapsed((c) => !c)} />
-      <div className={cn("flex min-h-screen flex-col transition-all", collapsed ? "lg:pl-16" : "lg:pl-60")}>
+      <div className={cn("relative z-10 flex min-h-screen flex-col transition-all", collapsed ? "lg:pl-16" : "lg:pl-60")}>
         <Topbar />
         <main className="mx-auto flex w-full max-w-[1440px] flex-1 px-4 py-5 pb-28 sm:px-6 lg:px-8 lg:py-7 lg:pb-8">
           <div className="w-full">{children}</div>
@@ -99,7 +102,7 @@ function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => 
   return (
     <aside
       className={cn(
-        "fixed inset-y-0 left-0 z-40 hidden flex-col border-r bg-card/95 shadow-[1px_0_0_rgb(15_23_42/0.02)] backdrop-blur transition-all lg:flex",
+        "fixed inset-y-0 left-0 z-40 hidden flex-col border-r bg-card/90 shadow-[1px_0_0_rgb(15_23_42/0.02),0_24px_60px_-44px_rgb(15_23_42/0.55)] backdrop-blur-xl transition-all lg:flex",
         collapsed ? "w-16" : "w-60",
       )}
     >
@@ -216,7 +219,7 @@ function Topbar() {
   };
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b bg-background/90 px-4 backdrop-blur-xl sm:px-6">
+    <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b bg-background/80 px-4 shadow-[0_14px_40px_-34px_rgb(15_23_42/0.65)] backdrop-blur-xl sm:px-6">
       <div className="flex min-w-0 items-center gap-2 md:flex">
         <Brand compact={false} />
         <div className="hidden min-w-0 min-[420px]:block">
@@ -253,7 +256,7 @@ function Topbar() {
               </Avatar>
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-72 p-2">
+          <DropdownMenuContent align="end" className="w-72 border bg-popover/95 p-2 shadow-card-hover backdrop-blur-xl">
             <DropdownMenuLabel className="p-2">
               <div className="flex items-center gap-3">
                 <Avatar className="size-10">
@@ -415,7 +418,7 @@ function NotificationsDropdown() {
           )}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-96 p-2">
+      <DropdownMenuContent align="end" className="w-[calc(100vw-1.5rem)] max-w-96 border bg-popover/95 p-2 shadow-card-hover backdrop-blur-xl">
         <DropdownMenuLabel className="flex items-center justify-between gap-3 p-2">
           <span className="text-sm font-semibold">Notifications</span>
           {unread > 0 ? (

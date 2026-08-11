@@ -62,6 +62,61 @@ export async function listAuditLogs(query: { page?: number; limit?: number; acti
   return { data, total, page, limit, pages: Math.ceil(total / limit) };
 }
 
+export async function listBatchesForAdmin(): Promise<unknown> {
+  const batches = await Batch.find({ archived: false })
+    .populate("courseId", "name code type")
+    .populate("teacherId", "firstName lastName email")
+    .sort({ createdAt: -1 })
+    .lean() as Array<{
+      _id: unknown;
+      name: string;
+      description?: string;
+      courseId?: { _id?: unknown; name?: string; code?: string; type?: string } | null;
+      teacherId?: { _id?: unknown; firstName?: string; lastName?: string; email?: string } | null;
+      studentIds?: unknown[];
+      startDate?: Date | null;
+      endDate?: Date | null;
+      createdAt?: Date;
+    }>;
+
+  const rows = batches.map((batch) => ({
+    _id: String(batch._id),
+    name: batch.name,
+    description: batch.description || "",
+    course: batch.courseId ? {
+      _id: String(batch.courseId._id),
+      name: batch.courseId.name || "",
+      code: batch.courseId.code || "",
+      type: batch.courseId.type || "",
+    } : null,
+    teacher: batch.teacherId ? {
+      _id: String(batch.teacherId._id),
+      name: `${batch.teacherId.firstName || ""} ${batch.teacherId.lastName || ""}`.trim(),
+      email: batch.teacherId.email || "",
+    } : null,
+    studentCount: batch.studentIds?.length || 0,
+    startDate: batch.startDate || null,
+    endDate: batch.endDate || null,
+    createdAt: batch.createdAt || null,
+  }));
+
+  const courseTypes = rows.reduce<Record<string, number>>((acc, row) => {
+    const type = row.course?.type || "Unassigned";
+    acc[type] = (acc[type] || 0) + 1;
+    return acc;
+  }, {});
+
+  return {
+    rows,
+    summary: {
+      totalBatches: rows.length,
+      totalStudents: rows.reduce((sum, row) => sum + row.studentCount, 0),
+      activeCourses: new Set(rows.map((row) => row.course?._id).filter(Boolean)).size,
+      courseTypes,
+    },
+  };
+}
+
 export async function adminReports(): Promise<unknown> {
   const [students, results, batches, attempts, exams] = await Promise.all([
     User.find({ role: "STUDENT", deletedAt: null }).select("firstName lastName email createdAt").lean(),
