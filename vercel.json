@@ -5,6 +5,7 @@
   "buildCommand": "npm run build -w shared && npm run build -w client",
   "installCommand": "npm install",
   "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api/index" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
