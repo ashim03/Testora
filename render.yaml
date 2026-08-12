@@ -13,7 +13,7 @@ services:
       - key: PORT
         value: 10000
       - key: CLIENT_URL
-        value: https://ieltspte.vercel.app
+        value: https://testora-platform.vercel.app
       - key: MONGODB_URI
         sync: false
       - key: JWT_ACCESS_SECRET
