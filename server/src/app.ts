@@ -27,6 +27,8 @@ type CreateAppOptions = {
 export function createApp(options: CreateAppOptions = {}): Application {
   const app = express();
 
+  if (config.isProduction) app.set("trust proxy", 1);
+
   app.use(helmet());
   app.use(
     cors({
