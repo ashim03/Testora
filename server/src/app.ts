@@ -1,4 +1,4 @@
-import express, { Application, Request, Response } from "express";
+import express, { Application, Request, RequestHandler, Response } from "express";
 import mongoose from "mongoose";
 import cors from "cors";
 import helmet from "helmet";
@@ -20,7 +20,11 @@ import { apiLimiter } from "./middleware/rateLimit";
 import { sanitizeMongoQuery, sanitizePagination } from "./middleware/sanitize";
 import { notFound, errorHandler } from "./middleware/error";
 
-export function createApp(): Application {
+type CreateAppOptions = {
+  beforeApi?: RequestHandler | RequestHandler[];
+};
+
+export function createApp(options: CreateAppOptions = {}): Application {
   const app = express();
 
   app.use(helmet());
@@ -41,6 +45,7 @@ export function createApp(): Application {
   app.use("/api", apiLimiter);
 
   const api = express.Router();
+  if (options.beforeApi) api.use(options.beforeApi);
   api.use(sanitizeMongoQuery);
   api.use(sanitizePagination);
   api.get("/health", (_req: Request, res: Response) => {
