@@ -4,12 +4,14 @@ services:
     runtime: node
     plan: starter
     region: oregon
-    buildCommand: npm install && npm run build -w shared && npm run build -w server
+    buildCommand: npm install --include=dev && npm run build -w shared && npm run build -w server
     startCommand: node server/dist/server.js
     healthCheckPath: /api/health
     envVars:
       - key: NODE_ENV
         value: production
+      - key: NPM_CONFIG_PRODUCTION
+        value: "false"
       - key: PORT
         value: 10000
       - key: CLIENT_URL
