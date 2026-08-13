@@ -19,13 +19,13 @@ export const listMyCourses = asyncHandler(async (req: Request, res: Response) =>
 
 export const getCourse = asyncHandler(async (req: Request, res: Response) => {
   if (!req.user) throw new ApiError(401, "Authentication required");
-  const data = await courseContent.getCourseFull(String(req.params.id), req.user.role, req.user.id);
+  const data = await courseContent.getCourseFull(String(req.params.courseId), req.user.role, req.user.id);
   res.json({ success: true, message: "Course", data });
 });
 
 export const getCourseOutline = asyncHandler(async (req: Request, res: Response) => {
   if (!req.user) throw new ApiError(401, "Authentication required");
-  const data = await courseContent.getCourseOutline(String(req.params.id), req.user.role, req.user.id);
+  const data = await courseContent.getCourseOutline(String(req.params.courseId), req.user.role, req.user.id);
   res.json({ success: true, message: "Course outline", data });
 });
 
