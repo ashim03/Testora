@@ -1,6 +1,6 @@
-import { Types } from "mongoose";
+﻿import { Types } from "mongoose";
 import { Subscription } from "../models";
-import { SUBSCRIPTION_PLANS, type SubscriptionPlanKey } from "@ielts-pte-platform/shared";
+import { SUBSCRIPTION_PLANS, type SubscriptionPlanKey } from "@testora-platform/shared";
 import { ApiError } from "../utils/helpers";
 
 const DAY_MS = 24 * 60 * 60 * 1000;

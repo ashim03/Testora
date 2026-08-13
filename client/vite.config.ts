@@ -6,11 +6,11 @@ export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
-      "@ielts-pte-platform/shared": fileURLToPath(new URL("../shared/dist/esm/index.js", import.meta.url)),
+      "@testora-platform/shared": fileURLToPath(new URL("../shared/dist/esm/index.js", import.meta.url)),
     },
   },
   optimizeDeps: {
-    exclude: ["@ielts-pte-platform/shared"],
+    exclude: ["@testora-platform/shared"],
   },
   server: {
     port: 5173,

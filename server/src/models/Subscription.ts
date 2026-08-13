@@ -1,5 +1,5 @@
-import mongoose, { type Document, type Types, type Model } from "mongoose";
-import { SUBSCRIPTION_PLAN_KEYS, SUBSCRIPTION_STATUSES, type SubscriptionPlanKey, type SubscriptionStatus } from "@ielts-pte-platform/shared";
+﻿import mongoose, { type Document, type Types, type Model } from "mongoose";
+import { SUBSCRIPTION_PLAN_KEYS, SUBSCRIPTION_STATUSES, type SubscriptionPlanKey, type SubscriptionStatus } from "@testora-platform/shared";
 
 export interface ISubscription extends Document {
   userId: Types.ObjectId;

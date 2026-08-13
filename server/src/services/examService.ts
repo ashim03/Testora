@@ -1,6 +1,6 @@
-import { Types } from "mongoose";
+﻿import { Types } from "mongoose";
 import { Exam, ExamAssignment, ExamAttempt, ExamAnswer, Question, Batch, MediaAsset } from "../models";
-import { SECTIONAL_PARTS, SECTIONAL_CATEGORIES } from "@ielts-pte-platform/shared";
+import { SECTIONAL_PARTS, SECTIONAL_CATEGORIES } from "@testora-platform/shared";
 import { ApiError, parseSort, generateReceipt } from "../utils/helpers";
 import { logActivity, audit, notify } from "./notificationService";
 import { resolveTeacherIdForStudent, afterSubmit } from "./gradingService";

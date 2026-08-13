@@ -1,4 +1,4 @@
-import { Router } from "express";
+﻿import { Router } from "express";
 import { z } from "zod";
 import * as teacher from "../controllers/teacherController";
 import { authenticate, authorize } from "../middleware/auth";
@@ -7,7 +7,7 @@ import {
   createStudentSchema,
   updateStudentSchema,
   createBatchSchema,
-} from "@ielts-pte-platform/shared";
+} from "@testora-platform/shared";
 
 const statusSchema = z.object({ status: z.enum(["ACTIVE", "INACTIVE", "SUSPENDED"]) });
 const resetPasswordSchema = z.object({ password: z.string().min(8) });

@@ -1,10 +1,10 @@
-import { Router } from "express";
+﻿import { Router } from "express";
 import { z } from "zod";
 import * as student from "../controllers/studentController";
 import { authenticate, authorize } from "../middleware/auth";
 import { validateRequest } from "../middleware/error";
 import { submitLimiter } from "../middleware/rateLimit";
-import { integrityEventSchema, subscribeSchema } from "@ielts-pte-platform/shared";
+import { integrityEventSchema, subscribeSchema } from "@testora-platform/shared";
 
 const answersSchema = z.object({
   answers: z.array(

@@ -1,5 +1,5 @@
-import mongoose, { type Document, type Model } from "mongoose";
-import { CourseLevel, LessonType, MaterialType } from "@ielts-pte-platform/shared";
+﻿import mongoose, { type Document, type Model } from "mongoose";
+import { CourseLevel, LessonType, MaterialType } from "@testora-platform/shared";
 
 export interface ICourse extends Document {
   name: string;

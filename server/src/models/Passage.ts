@@ -1,5 +1,5 @@
-import mongoose, { type Document, type Types, type Model } from "mongoose";
-import { QUESTION_CATEGORIES } from "@ielts-pte-platform/shared";
+﻿import mongoose, { type Document, type Types, type Model } from "mongoose";
+import { QUESTION_CATEGORIES } from "@testora-platform/shared";
 
 export interface IPassage extends Document {
   title: string;

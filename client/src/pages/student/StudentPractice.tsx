@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+﻿import { useMemo, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/ca
 import { TableToolbar, Pagination, TableSkeleton } from "../../components/ui/table-toolbar";
 import { ErrorState, EmptyState } from "../../components/ui/feedback";
 import { getErrorMessage, formatDuration, titleCase } from "../../utils";
-import { SECTIONAL_PARTS } from "@ielts-pte-platform/shared";
+import { SECTIONAL_PARTS } from "@testora-platform/shared";
 
 interface PracticeItem {
   exam: {

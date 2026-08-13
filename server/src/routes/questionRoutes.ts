@@ -1,8 +1,8 @@
-import { Router } from "express";
+﻿import { Router } from "express";
 import * as questions from "../controllers/questionController";
 import { authenticate, authorize } from "../middleware/auth";
 import { validateRequest } from "../middleware/error";
-import { createQuestionSchema, updateQuestionSchema, createPassageSchema } from "@ielts-pte-platform/shared";
+import { createQuestionSchema, updateQuestionSchema, createPassageSchema } from "@testora-platform/shared";
 
 const router = Router();
 router.use(authenticate, authorize("SUPER_ADMIN", "TEACHER"));

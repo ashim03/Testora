@@ -6,13 +6,13 @@
 
 ## 1. System Map (verified)
 
-Monorepo `ielts-pte-platform` with npm workspaces:
+Monorepo `testora-platform` with npm workspaces:
 
 - **server** — Express + Mongoose + JWT (Bearer access + httpOnly refresh cookie). Routes: `/auth`, `/admin`, `/teacher`, `/questions`, `/exams`, `/student`, `/media`, `/branding`. Middleware: helmet, CORS allowlist, cookie-parser, express-rate-limit, zod validation, multer in-memory uploads (Cloudinary/local), global error handler. Objective + manual grading in `gradingService`.
 - **client** — React 18 + Vite, TanStack Query, Zustand (persisted `ielts-auth`), react-router v6, Tailwind + shadcn-style UI, sonner toasts, axios with 401-refresh interceptor, multipart `uploadFile()`.
 - **shared** — zod validators and types (CJS; client imports `import * as shared`).
 
-**Servers:** server dev `:5000` (tsx watch), client dev `:5173`, Mongo `127.0.0.1:27017/ielts_pte`.
+**Servers:** server dev `:5000` (tsx watch), client dev `:5173`, Mongo `127.0.0.1:27017/testora`.
 
 **Demo users (seeded, verified live):** `admin@example.com/Admin@12345`, `teacher@example.com` + `teacher2@example.com` (`Teacher@12345`), students `student@example.com` … `student10@example.com` (`Student@12345`). 10 published exams + 30 questions assigned to all students.
 

@@ -1,5 +1,5 @@
-import mongoose, { type Document, type Model } from "mongoose";
-import { ProgressSource } from "@ielts-pte-platform/shared";
+﻿import mongoose, { type Document, type Model } from "mongoose";
+import { ProgressSource } from "@testora-platform/shared";
 
 export interface ICourseEnrollment extends Document {
   courseId: mongoose.Types.ObjectId;

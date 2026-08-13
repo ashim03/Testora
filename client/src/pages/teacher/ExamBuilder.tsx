@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { ChevronLeft, Plus, Trash2 } from "lucide-react";
@@ -11,7 +11,7 @@ import { Switch } from "../../components/ui/switch";
 import { Spinner } from "../../components/ui/feedback";
 import { AudioUpload } from "../../components/shared/AudioUpload";
 import { getErrorMessage, cn } from "../../utils";
-import * as shared from "@ielts-pte-platform/shared";
+import * as shared from "@testora-platform/shared";
 
 interface Section {
   title: string;

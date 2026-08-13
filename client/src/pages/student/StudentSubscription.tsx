@@ -1,8 +1,8 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { CalendarDays, CreditCard, RefreshCcw } from "lucide-react";
-import * as shared from "@ielts-pte-platform/shared";
+import * as shared from "@testora-platform/shared";
 import { apiGet, apiPost } from "../../api/client";
 import { Button } from "../../components/ui/button";
 import { Label } from "../../components/ui/label";

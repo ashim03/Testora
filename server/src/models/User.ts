@@ -1,5 +1,5 @@
-import mongoose, { type Types, type Document, type Model } from "mongoose";
-import { ROLES } from "@ielts-pte-platform/shared";
+﻿import mongoose, { type Types, type Document, type Model } from "mongoose";
+import { ROLES } from "@testora-platform/shared";
 
 export type UserRole = "SUPER_ADMIN" | "TEACHER" | "STUDENT";
 export type UserStatus = "ACTIVE" | "INACTIVE" | "SUSPENDED";

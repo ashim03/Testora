@@ -1,4 +1,4 @@
-import { Router } from "express";
+﻿import { Router } from "express";
 import * as exams from "../controllers/examController";
 import { authenticate, authorize } from "../middleware/auth";
 import { validateRequest } from "../middleware/error";
@@ -7,7 +7,7 @@ import {
   updateExamSchema,
   assignExamSchema,
   gradeSubmissionSchema,
-} from "@ielts-pte-platform/shared";
+} from "@testora-platform/shared";
 
 const router = Router();
 router.use(authenticate, authorize("SUPER_ADMIN", "TEACHER"));

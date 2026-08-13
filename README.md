@@ -16,7 +16,7 @@ results, analytics, and role-based dashboards for **Super Admins**, **Teachers**
 |----------|-------|
 | Frontend | React 18, TypeScript, Vite, Tailwind CSS, shadcn-style custom UI, TanStack Query, Zustand, React Hook Form + Zod, Sonner, Recharts |
 | Backend  | Node, Express, TypeScript, Mongoose, JWT (access + httpOnly refresh), bcryptjs, Helmet, CORS, express-rate-limit, Multer, Zod |
-| Shared   | TypeScript package (`@ielts-pte-platform/shared`) holding types, constants, and Zod validators |
+| Shared   | TypeScript package (`@testora-platform/shared`) holding types, constants, and Zod validators |
 
 ## Project Structure
 

@@ -1,8 +1,8 @@
-import { Router } from "express";
+﻿import { Router } from "express";
 import * as branding from "../controllers/brandingController";
 import { authenticate, authorize } from "../middleware/auth";
 import { validateRequest } from "../middleware/error";
-import { brandingSchema } from "@ielts-pte-platform/shared";
+import { brandingSchema } from "@testora-platform/shared";
 
 const router = Router();
 

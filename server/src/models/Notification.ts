@@ -1,5 +1,5 @@
-import mongoose, { type Document, type Types, type Model } from "mongoose";
-import { NOTIFICATION_TYPES } from "@ielts-pte-platform/shared";
+﻿import mongoose, { type Document, type Types, type Model } from "mongoose";
+import { NOTIFICATION_TYPES } from "@testora-platform/shared";
 
 export interface INotification extends Document {
   recipientId: Types.ObjectId;

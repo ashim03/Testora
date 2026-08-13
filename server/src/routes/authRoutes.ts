@@ -1,9 +1,9 @@
-import { Router } from "express";
+﻿import { Router } from "express";
 import * as authController from "../controllers/authController";
 import { authenticate } from "../middleware/auth";
 import { validateRequest } from "../middleware/error";
 import { authLimiter } from "../middleware/rateLimit";
-import { loginSchema, forgotPasswordSchema, resetPasswordSchema, changePasswordSchema, updateProfileSchema } from "@ielts-pte-platform/shared";
+import { loginSchema, forgotPasswordSchema, resetPasswordSchema, changePasswordSchema, updateProfileSchema } from "@testora-platform/shared";
 
 const router = Router();
 

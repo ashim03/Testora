@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Plus, Trash2, Pencil } from "lucide-react";
@@ -16,7 +16,7 @@ import { TableToolbar, Pagination, PanelEmptyState, TableSkeleton } from "../../
 import { Spinner } from "../../components/ui/feedback";
 import { AudioUpload } from "../../components/shared/AudioUpload";
 import { getErrorMessage, formatDate, cn } from "../../utils";
-import * as shared from "@ielts-pte-platform/shared";
+import * as shared from "@testora-platform/shared";
 
 interface QuestionRow {
   _id: string;

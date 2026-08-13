@@ -153,7 +153,7 @@ async function createQaAudio(uploadedBy: Types.ObjectId, name: string): Promise<
 
 async function main(): Promise<void> {
   requireSafeEnvironment();
-  const uri = process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/ielts_pte_platform";
+  const uri = process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/testora";
   await mongoose.connect(uri);
   await resetQaData();
 

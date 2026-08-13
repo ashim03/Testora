@@ -71,7 +71,7 @@ const PTE_SPEAKING_RUBRIC = [
 ];
 
 async function seed(): Promise<void> {
-  const uri = process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/ielts_pte_platform";
+  const uri = process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/testora";
   await mongoose.connect(uri);
   console.log(`[seed] connected ${uri}`);
 

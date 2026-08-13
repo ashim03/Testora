@@ -1,5 +1,5 @@
-import mongoose, { type Document, type Types, type Model } from "mongoose";
-import { QUESTION_CATEGORIES, QUESTION_TYPES } from "@ielts-pte-platform/shared";
+﻿import mongoose, { type Document, type Types, type Model } from "mongoose";
+import { QUESTION_CATEGORIES, QUESTION_TYPES } from "@testora-platform/shared";
 
 export type QuestionCategoryType = (typeof QUESTION_CATEGORIES)[number];
 export type QuestionType = (typeof QUESTION_TYPES)[number];

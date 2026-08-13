@@ -56,7 +56,7 @@ async function launchBrowser() {
 }
 
 async function loadSessions() {
-  const mongoUri = process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/ielts_pte_platform";
+  const mongoUri = process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/testora";
   const secret = process.env.JWT_ACCESS_SECRET;
   if (!secret) throw new Error("JWT_ACCESS_SECRET is required for browser smoke sessions");
   await mongoose.connect(mongoUri);
