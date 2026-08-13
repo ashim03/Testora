@@ -147,6 +147,8 @@ async function main(): Promise<void> {
     const attemptId = startRes.json?.data?.attempt?._id;
     record("Exam Attempt", "Attempt id returned", Boolean(attemptId), attemptId);
     const attemptDetail = attemptId ? await checkApi("Exam Attempt", "Load attempt", `/student/attempts/${attemptId}`, token("ieltsStudent")) : null;
+    const ieltsSectionalAudio = ((attemptDetail?.data?.exam?.sections || []) as any[]).find((s: any) => s.audioUrl);
+    record("Audio", "IELTS sectional practice section audio present", Boolean(ieltsSectionalAudio), ieltsSectionalAudio?.title);
     const firstQuestion = attemptDetail?.data?.questions?.[0];
     if (attemptId && firstQuestion?._id) {
       const saveRes = await request(`/student/attempts/${attemptId}/answers`, {
@@ -186,6 +188,8 @@ async function main(): Promise<void> {
     record("PTE Attempt", "Start PTE listening practice", startRes.ok, `HTTP ${startRes.status}`);
     const attemptId = startRes.json?.data?.attempt?._id;
     const attemptDetail = attemptId ? await checkApi("PTE Attempt", "Load PTE listening attempt", `/student/attempts/${attemptId}`, token("pteStudent")) : null;
+    const pteSectionalAudio = ((attemptDetail?.data?.exam?.sections || []) as any[]).find((s: any) => s.audioUrl);
+    record("Audio", "PTE sectional practice section audio present", Boolean(pteSectionalAudio), pteSectionalAudio?.title);
     const loadedTypes = new Set((attemptDetail?.data?.questions || []).map((q: any) => q.type));
     for (const type of ["HIGHLIGHT_CORRECT_SUMMARY", "SELECT_MISSING_WORD", "HIGHLIGHT_INCORRECT_WORDS", "LISTENING_DICTATION"]) {
       record("PTE Attempt", `PTE listening type loads: ${type}`, loadedTypes.has(type), [...loadedTypes].join(", "));

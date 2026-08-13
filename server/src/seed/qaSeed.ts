@@ -264,9 +264,21 @@ async function main(): Promise<void> {
   const questions = await Question.insertMany(questionInputs.map((q) => ({ ...q, createdBy: teacherId })));
   const byCategory = (category: string) => questions.filter((q) => q.category === category).map((q) => q._id);
 
+  const listeningSection = (qids: Types.ObjectId[]) => ({
+    title: "Listening",
+    order: 0,
+    durationSec: 300,
+    questionIds: qids,
+    instructions: "QA listening",
+    audioUrl: qAudio.url,
+    audioAssetId: qAudio.assetId,
+    audioDuration: 1,
+    audioPlayRules: { maxPlays: null, allowSeek: true },
+  });
+
   const exams = await Exam.insertMany([
-    { createdBy: teacherId, title: "[QA] IELTS Listening Test A", type: "SECTIONAL", category: "IELTS_LISTENING", durationSec: 300, questionIds: byCategory("IELTS_LISTENING"), attemptLimit: 3, autoSubmit: true, status: "PUBLISHED" },
-    { createdBy: teacherId, title: "[QA] IELTS Listening Test B", type: "SECTIONAL", category: "IELTS_LISTENING", durationSec: 300, questionIds: byCategory("IELTS_LISTENING").slice().reverse(), attemptLimit: 3, autoSubmit: true, status: "PUBLISHED" },
+    { createdBy: teacherId, title: "[QA] IELTS Listening Test A", type: "SECTIONAL", category: "IELTS_LISTENING", durationSec: 300, sections: [listeningSection(byCategory("IELTS_LISTENING"))], attemptLimit: 3, autoSubmit: true, status: "PUBLISHED" },
+    { createdBy: teacherId, title: "[QA] IELTS Listening Test B", type: "SECTIONAL", category: "IELTS_LISTENING", durationSec: 300, sections: [listeningSection(byCategory("IELTS_LISTENING").slice().reverse())], attemptLimit: 3, autoSubmit: true, status: "PUBLISHED" },
     { createdBy: teacherId, title: "[QA] IELTS Reading Test A", type: "SECTIONAL", category: "IELTS_READING", durationSec: 300, questionIds: byCategory("IELTS_READING"), attemptLimit: 3, autoSubmit: true, status: "PUBLISHED" },
     { createdBy: teacherId, title: "[QA] IELTS Reading Test B", type: "SECTIONAL", category: "IELTS_READING", durationSec: 300, questionIds: byCategory("IELTS_READING").slice().reverse(), attemptLimit: 3, autoSubmit: true, status: "PUBLISHED" },
     { createdBy: teacherId, title: "[QA] IELTS Writing Practice", type: "SECTIONAL", category: "IELTS_WRITING", durationSec: 300, questionIds: byCategory("IELTS_WRITING"), attemptLimit: 3, autoSubmit: true, status: "PUBLISHED" },
@@ -280,7 +292,7 @@ async function main(): Promise<void> {
     { createdBy: teacherId, title: "[QA] PTE Speaking Practice", type: "SECTIONAL", category: "PTE_SPEAKING", durationSec: 300, questionIds: byCategory("PTE_SPEAKING"), attemptLimit: 3, autoSubmit: true, status: "PUBLISHED" },
     { createdBy: teacherId, title: "[QA] PTE Writing Practice", type: "SECTIONAL", category: "PTE_WRITING", durationSec: 300, questionIds: byCategory("PTE_WRITING"), attemptLimit: 3, autoSubmit: true, status: "PUBLISHED" },
     { createdBy: teacherId, title: "[QA] PTE Reading Practice", type: "SECTIONAL", category: "PTE_READING", durationSec: 300, questionIds: byCategory("PTE_READING"), attemptLimit: 3, autoSubmit: true, status: "PUBLISHED" },
-    { createdBy: teacherId, title: "[QA] PTE Listening Practice", type: "SECTIONAL", category: "PTE_LISTENING", durationSec: 300, questionIds: byCategory("PTE_LISTENING"), attemptLimit: 3, autoSubmit: true, status: "PUBLISHED" },
+    { createdBy: teacherId, title: "[QA] PTE Listening Practice", type: "SECTIONAL", category: "PTE_LISTENING", durationSec: 300, sections: [listeningSection(byCategory("PTE_LISTENING"))], attemptLimit: 3, autoSubmit: true, status: "PUBLISHED" },
     { createdBy: teacherId, title: "[QA] PTE Full Mock", type: "MOCK", category: "PTE_READING", durationSec: 600, sections: [
       { title: "Speaking", order: 0, durationSec: 120, questionIds: byCategory("PTE_SPEAKING"), instructions: "QA speaking" },
       { title: "Writing", order: 1, durationSec: 120, questionIds: byCategory("PTE_WRITING"), instructions: "QA writing" },
