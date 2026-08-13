@@ -14,6 +14,7 @@ import {
 } from "../../../components/ui/table";
 import { TableToolbar, Pagination, PanelEmptyState, TableSkeleton } from "../../../components/ui/table-toolbar";
 import { Spinner } from "../../../components/ui/feedback";
+import { ConfirmDialog } from "../../../components/ui/confirm-dialog";
 import { getErrorMessage, formatDate } from "../../../utils";
 
 export interface UserRow {
@@ -36,6 +37,7 @@ export function UserRoleTable({ role, title, basePath, resource }: { role: strin
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
   const [tempPassword, setTempPassword] = useState(generateTemporaryPassword);
+  const [deleteTarget, setDeleteTarget] = useState<UserRow | null>(null);
 
   const listQuery = useQuery({
     queryKey: [basePath, "users", { page, search }],
@@ -135,7 +137,7 @@ export function UserRoleTable({ role, title, basePath, resource }: { role: strin
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
                         <Button variant="ghost" size="icon" onClick={() => resetPw.mutate(u.id)} title="Reset password"><KeyRound className="size-4" /></Button>
-                        <Button variant="ghost" size="icon" disabled={role === "SUPER_ADMIN"} onClick={() => deleteMutation.mutate(u.id)} title="Delete"><Trash2 className="size-4" /></Button>
+                        <Button variant="ghost" size="icon" disabled={role === "SUPER_ADMIN"} onClick={() => setDeleteTarget(u)} title="Delete"><Trash2 className="size-4" /></Button>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -190,6 +192,20 @@ export function UserRoleTable({ role, title, basePath, resource }: { role: strin
           </form>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={(o) => { if (!o) setDeleteTarget(null); }}
+        title="Delete user?"
+        description={`${deleteTarget?.firstName} ${deleteTarget?.lastName} (${deleteTarget?.email}) and their data will be permanently deleted. This cannot be undone.`}
+        confirmLabel="Delete"
+        destructive
+        loading={deleteMutation.isPending}
+        onConfirm={() => {
+          if (deleteTarget) deleteMutation.mutate(deleteTarget.id);
+          setDeleteTarget(null);
+        }}
+      />
     </div>
   );
 }

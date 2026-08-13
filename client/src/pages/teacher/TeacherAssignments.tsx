@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/ca
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "../../components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../components/ui/table";
 import { TableEmptyState, TableSkeleton } from "../../components/ui/table-toolbar";
+import { ConfirmDialog } from "../../components/ui/confirm-dialog";
 import { Spinner } from "../../components/ui/feedback";
 import { AssignmentGradeDialog, type AssignmentSubmissionRow } from "../../components/assignments/AssignmentGradeDialog";
 import { getErrorMessage, formatDate, titleCase } from "../../utils";
@@ -51,6 +52,7 @@ export function TeacherAssignments() {
   const [editing, setEditing] = useState<AssignmentRow | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [grading, setGrading] = useState<AssignmentSubmissionRow | null>(null);
+  const [deleteId, setDeleteId] = useState<AssignmentRow | null>(null);
 
   const studentsQuery = useQuery({
     queryKey: ["teacher", "students", "all"],
@@ -199,7 +201,7 @@ export function TeacherAssignments() {
                             {!row.published && (
                               <Button variant="ghost" size="icon" className="size-7" title="Publish" onClick={() => publishMutation.mutate(row._id)}><Send className="size-3.5 text-emerald-600" /></Button>
                             )}
-                            <Button variant="ghost" size="icon" className="size-7" title="Delete" onClick={() => { if (confirm("Delete this assignment?")) deleteMutation.mutate(row._id); }}><Trash2 className="size-3.5" /></Button>
+                            <Button variant="ghost" size="icon" className="size-7" title="Delete" onClick={() => setDeleteId(row)}><Trash2 className="size-3.5" /></Button>
                           </div>
                         </TableCell>
                       </TableRow>
@@ -288,6 +290,20 @@ export function TeacherAssignments() {
       />
 
       <AssignmentGradeDialog submission={grading} onClose={() => setGrading(null)} onSubmit={(body) => grading && gradeMutation.mutate({ id: grading._id, body })} submitting={gradeMutation.isPending} />
+
+      <ConfirmDialog
+        open={!!deleteId}
+        onOpenChange={(o) => { if (!o) setDeleteId(null); }}
+        title="Delete assignment?"
+        description={`"${deleteId?.title}" and its student submissions will be permanently deleted. This cannot be undone.`}
+        confirmLabel="Delete"
+        destructive
+        loading={deleteMutation.isPending}
+        onConfirm={() => {
+          if (deleteId) deleteMutation.mutate(deleteId._id);
+          setDeleteId(null);
+        }}
+      />
     </div>
   );
 }

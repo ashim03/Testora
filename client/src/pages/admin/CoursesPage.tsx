@@ -10,6 +10,7 @@ import { Card, CardContent } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "../../components/ui/dialog";
 import { EmptyState, PageSpinner, ErrorState } from "../../components/ui/feedback";
+import { ConfirmDialog } from "../../components/ui/confirm-dialog";
 import { getErrorMessage } from "../../utils";
 
 interface Course {
@@ -25,6 +26,7 @@ export function CoursesPage() {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Course | null>(null);
+  const [deleting, setDeleting] = useState<Course | null>(null);
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["admin", "courses"],
@@ -108,7 +110,7 @@ export function CoursesPage() {
                 {c.description && <p className="mt-2 text-sm text-muted-foreground">{c.description}</p>}
                 <div className="mt-3 flex justify-end gap-1">
                   <Button variant="ghost" size="icon" title="Edit" onClick={() => openEdit(c)}><Pencil className="size-4" /></Button>
-                  <Button variant="ghost" size="icon" title="Delete" onClick={() => deleteMutation.mutate(c._id)}><Trash2 className="size-4" /></Button>
+                  <Button variant="ghost" size="icon" title="Delete" onClick={() => setDeleting(c)}><Trash2 className="size-4" /></Button>
                 </div>
               </CardContent>
             </Card>
@@ -146,6 +148,20 @@ export function CoursesPage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={!!deleting}
+        onOpenChange={(o) => { if (!o) setDeleting(null); }}
+        title="Delete course?"
+        description={`"${deleting?.name}" will be hidden and no longer available. Existing enrollments are preserved.`}
+        confirmLabel="Delete"
+        destructive
+        loading={deleteMutation.isPending}
+        onConfirm={() => {
+          if (deleting) deleteMutation.mutate(deleting._id);
+          setDeleting(null);
+        }}
+      />
     </div>
   );
 }

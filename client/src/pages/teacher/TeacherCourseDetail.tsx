@@ -14,9 +14,12 @@ import { Badge } from "../../components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "../../components/ui/dialog";
 import { ErrorState, PageSpinner, EmptyState } from "../../components/ui/feedback";
+import { ConfirmDialog } from "../../components/ui/confirm-dialog";
 import { getErrorMessage } from "../../utils";
 
 type EntityType = "module" | "chapter" | "lesson" | "material";
+
+const ENTITY_LABEL: Record<EntityType, string> = { module: "module", chapter: "chapter", lesson: "lesson", material: "material" };
 
 export function TeacherCourseDetail() {
   const { id = "" } = useParams();
@@ -24,6 +27,7 @@ export function TeacherCourseDetail() {
   const qc = useQueryClient();
   const [activeTab, setActiveTab] = useState<"content" | "enrollments" | "announcements">("content");
   const [editor, setEditor] = useState<{ type: EntityType; mode: "create" | "edit"; parentId?: string; item?: unknown } | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{ type: EntityType; id: string } | null>(null);
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["teacher", "course", id],
@@ -109,7 +113,7 @@ export function TeacherCourseDetail() {
       </div>
 
       {activeTab === "content" && (
-        <ContentEditor data={data} onAdd={(type, parentId) => setEditor({ type, mode: "create", parentId })} onDelete={(type, itemId) => { if (confirm("Delete this item?")) deleteMutation.mutate({ type, id: itemId }); }} onAddMaterial={(lessonId) => setEditor({ type: "material", mode: "create", parentId: lessonId })} />
+        <ContentEditor data={data} onAdd={(type, parentId) => setEditor({ type, mode: "create", parentId })} onDelete={(type, itemId) => setDeleteTarget({ type, id: itemId })} onAddMaterial={(lessonId) => setEditor({ type: "material", mode: "create", parentId: lessonId })} />
       )}
       {activeTab === "enrollments" && <EnrollmentsTab courseId={id} />}
       {activeTab === "announcements" && <AnnouncementsTab courseId={id} />}
@@ -119,6 +123,20 @@ export function TeacherCourseDetail() {
         onClose={() => setEditor(null)}
         onSubmit={handleCreateSubmit}
         submitting={createModule.isPending || createChapter.isPending || createLesson.isPending || createMaterial.isPending}
+      />
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={(o) => { if (!o) setDeleteTarget(null); }}
+        title={`Delete ${deleteTarget ? ENTITY_LABEL[deleteTarget.type] : "item"}?`}
+        description="This item and any nested content will be permanently removed from the course. This cannot be undone."
+        confirmLabel="Delete"
+        destructive
+        loading={deleteMutation.isPending}
+        onConfirm={() => {
+          if (deleteTarget) deleteMutation.mutate(deleteTarget);
+          setDeleteTarget(null);
+        }}
       />
     </div>
   );

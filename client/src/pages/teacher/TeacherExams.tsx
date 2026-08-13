@@ -12,6 +12,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "../../components/ui/table";
 import { TableToolbar, Pagination, PanelEmptyState, TableSkeleton } from "../../components/ui/table-toolbar";
+import { ConfirmDialog } from "../../components/ui/confirm-dialog";
 import { Spinner } from "../../components/ui/feedback";
 import { getErrorMessage, formatDate, formatDuration, titleCase } from "../../utils";
 
@@ -33,6 +34,7 @@ export function TeacherExams() {
   const [open, setOpen] = useState(false);
   const [assignId, setAssignId] = useState<string | null>(null);
   const [building, setBuilding] = useState<{ mode: "create" } | { mode: "edit"; id: string } | null>(null);
+  const [confirm, setConfirm] = useState<{ id: string; title: string; action: "publish" | "archive" } | null>(null);
 
   const listQuery = useQuery({
     queryKey: ["teacher", "exams", { page, search }],
@@ -133,13 +135,13 @@ export function TeacherExams() {
                       <div className="flex justify-end gap-1">
                         <Button variant="ghost" size="icon" title="Edit" onClick={() => setBuilding({ mode: "edit", id: e._id })}><Pencil className="size-4" /></Button>
                         {e.status === "DRAFT" && (
-                          <Button variant="ghost" size="icon" title="Publish" onClick={() => publishMutation.mutate(e._id)}><Rocket className="size-4" /></Button>
+                          <Button variant="ghost" size="icon" title="Publish" onClick={() => setConfirm({ id: e._id, title: e.title, action: "publish" })}><Rocket className="size-4" /></Button>
                         )}
                         {e.status !== "ARCHIVED" && (
                           <Button variant="ghost" size="icon" title="Assign" onClick={() => setAssignId(e._id)}><Send className="size-4" /></Button>
                         )}
                         {e.status !== "ARCHIVED" && (
-                          <Button variant="ghost" size="icon" title="Archive" onClick={() => archiveMutation.mutate(e._id)}><Archive className="size-4" /></Button>
+                          <Button variant="ghost" size="icon" title="Archive" onClick={() => setConfirm({ id: e._id, title: e.title, action: "archive" })}><Archive className="size-4" /></Button>
                         )}
                       </div>
                     </TableCell>
@@ -194,6 +196,26 @@ export function TeacherExams() {
           )}
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={!!confirm}
+        onOpenChange={(o) => { if (!o) setConfirm(null); }}
+        title={confirm?.action === "archive" ? "Archive exam?" : "Publish exam?"}
+        description={
+          confirm?.action === "archive"
+            ? `"${confirm?.title}" will be archived and removed from student access. Students with an in-progress attempt can still finish it.`
+            : `"${confirm?.title}" will be published. PRACTICE / SECTIONAL tests appear in your students' Practice library.`
+        }
+        confirmLabel={confirm?.action === "archive" ? "Archive" : "Publish"}
+        destructive={confirm?.action === "archive"}
+        loading={publishMutation.isPending || archiveMutation.isPending}
+        onConfirm={() => {
+          if (!confirm) return;
+          if (confirm.action === "archive") archiveMutation.mutate(confirm.id);
+          else publishMutation.mutate(confirm.id);
+          setConfirm(null);
+        }}
+      />
     </div>
   );
 }

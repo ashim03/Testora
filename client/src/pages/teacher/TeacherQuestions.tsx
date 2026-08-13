@@ -13,6 +13,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "../../components/ui/table";
 import { TableToolbar, Pagination, PanelEmptyState, TableSkeleton } from "../../components/ui/table-toolbar";
+import { ConfirmDialog } from "../../components/ui/confirm-dialog";
 import { Spinner } from "../../components/ui/feedback";
 import { AudioUpload } from "../../components/shared/AudioUpload";
 import { getErrorMessage, formatDate } from "../../utils";
@@ -80,6 +81,7 @@ export function TeacherQuestions() {
   const [fType, setFType] = useState("");
   const [fDifficulty, setFDifficulty] = useState("");
   const [formOpen, setFormOpen] = useState(false);
+  const [deleteQuestion, setDeleteQuestion] = useState<{ _id: string; title: string } | null>(null);
   const [editing, setEditing] = useState<QuestionDetail | null>(null);
 
   const listQuery = useQuery({
@@ -202,7 +204,7 @@ export function TeacherQuestions() {
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
                         <Button variant="ghost" size="icon" onClick={() => openEdit(q._id)} title="Edit"><Pencil className="size-4" /></Button>
-                        <Button variant="ghost" size="icon" onClick={() => deleteMutation.mutate(q._id)} title="Delete"><Trash2 className="size-4" /></Button>
+                        <Button variant="ghost" size="icon" onClick={() => setDeleteQuestion(q)} title="Delete"><Trash2 className="size-4" /></Button>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -225,6 +227,20 @@ export function TeacherQuestions() {
           onCancel={() => { setFormOpen(false); setEditing(null); }}
         />
       </Dialog>
+
+      <ConfirmDialog
+        open={!!deleteQuestion}
+        onOpenChange={(o) => { if (!o) setDeleteQuestion(null); }}
+        title="Delete question?"
+        description={`"${deleteQuestion?.title}" will be permanently removed from your question bank. Questions referenced by published exams remain in those exams.`}
+        confirmLabel="Delete"
+        destructive
+        loading={deleteMutation.isPending}
+        onConfirm={() => {
+          if (deleteQuestion) deleteMutation.mutate(deleteQuestion._id);
+          setDeleteQuestion(null);
+        }}
+      />
     </div>
   );
 }
