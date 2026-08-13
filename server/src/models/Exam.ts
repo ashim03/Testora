@@ -8,6 +8,10 @@ export interface IExamSection extends Document {
   durationSec?: number | null;
   questionIds: Types.ObjectId[];
   instructions: string;
+  audioUrl?: string | null;
+  audioAssetId?: Types.ObjectId | null;
+  audioDuration?: number | null;
+  audioPlayRules?: { maxPlays?: number | null; allowSeek?: boolean } | null;
 }
 
 export interface IExam extends Document {
@@ -25,6 +29,10 @@ export interface IExam extends Document {
     durationSec?: number | null;
     questionIds: Types.ObjectId[];
     instructions: string;
+    audioUrl?: string | null;
+    audioAssetId?: Types.ObjectId | null;
+    audioDuration?: number | null;
+    audioPlayRules?: { maxPlays?: number | null; allowSeek?: boolean } | null;
   }>;
   questionIds: Types.ObjectId[];
   startAt?: Date | null;
@@ -46,6 +54,14 @@ export interface IExam extends Document {
   updatedAt: Date;
 }
 
+const sectionAudioPlayRulesSchema = new mongoose.Schema(
+  {
+    maxPlays: { type: Number, default: null, min: 1, max: 50 },
+    allowSeek: { type: Boolean, default: true },
+  },
+  { _id: false },
+);
+
 const sectionSchema = new mongoose.Schema(
   {
     title: { type: String, required: true, maxlength: 120 },
@@ -53,6 +69,10 @@ const sectionSchema = new mongoose.Schema(
     durationSec: { type: Number, default: null },
     questionIds: { type: [mongoose.Schema.Types.ObjectId], ref: "Question", default: [] },
     instructions: { type: String, default: "" },
+    audioUrl: { type: String, default: null },
+    audioAssetId: { type: mongoose.Schema.Types.ObjectId, ref: "MediaAsset", default: null },
+    audioDuration: { type: Number, default: null },
+    audioPlayRules: { type: sectionAudioPlayRulesSchema, default: null },
   },
   { _id: true },
 );

@@ -9,6 +9,7 @@ import { Label } from "../../components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Switch } from "../../components/ui/switch";
 import { Spinner } from "../../components/ui/feedback";
+import { AudioUpload } from "../../components/shared/AudioUpload";
 import { getErrorMessage, cn } from "../../utils";
 import * as shared from "@ielts-pte-platform/shared";
 
@@ -17,6 +18,10 @@ interface Section {
   durationSec?: number;
   instructions?: string;
   questionIds: string[];
+  audioUrl?: string | null;
+  audioAssetId?: string | null;
+  audioDuration?: number | null;
+  audioPlayRules?: { maxPlays?: number | null; allowSeek?: boolean } | null;
 }
 
 interface BankQuestion {
@@ -38,7 +43,16 @@ interface ExamDetail {
   passMarks?: number | null;
   startAt?: string;
   endAt?: string;
-  sections?: Array<{ title: string; durationSec?: number; instructions?: string; questionIds?: string[] }>;
+  sections?: Array<{
+    title: string;
+    durationSec?: number;
+    instructions?: string;
+    questionIds?: string[];
+    audioUrl?: string | null;
+    audioAssetId?: string | null;
+    audioDuration?: number | null;
+    audioPlayRules?: { maxPlays?: number | null; allowSeek?: boolean } | null;
+  }>;
   questionIds?: string[];
   [key: string]: unknown;
 }
@@ -122,7 +136,7 @@ export function ExamBuilder({ examId, onDone, onCancel }: { examId?: string; onD
         if (ex.startAt) setStartAt(toLocalInput(ex.startAt));
         if (ex.endAt) setEndAt(toLocalInput(ex.endAt));
         const secs: Section[] = ex.sections?.length
-          ? ex.sections.map((s) => ({ title: s.title, durationSec: s.durationSec || 0, instructions: s.instructions || "", questionIds: s.questionIds || [] }))
+          ? ex.sections.map((s) => ({ title: s.title, durationSec: s.durationSec || 0, instructions: s.instructions || "", questionIds: s.questionIds || [], audioUrl: s.audioUrl || null, audioAssetId: s.audioAssetId || null, audioDuration: s.audioDuration ?? null, audioPlayRules: s.audioPlayRules || null }))
           : ex.questionIds?.length
             ? [{ title: "All questions", durationSec: ex.durationSec || 0, instructions: "", questionIds: ex.questionIds }]
             : [];
@@ -198,6 +212,10 @@ export function ExamBuilder({ examId, onDone, onCancel }: { examId?: string; onD
           durationSec: s.durationSec || undefined,
           instructions: s.instructions,
           questionIds: s.questionIds,
+          audioUrl: s.audioUrl || null,
+          audioAssetId: s.audioAssetId || null,
+          audioDuration: s.audioDuration ?? undefined,
+          audioPlayRules: s.audioPlayRules || undefined,
         })),
         questionIds,
         ...settings,
@@ -324,6 +342,21 @@ export function ExamBuilder({ examId, onDone, onCancel }: { examId?: string; onD
                   </div>
                   <div onClick={(e) => e.stopPropagation()}>
                     <Input value={s.instructions} onChange={(e) => updateSection(i, { instructions: e.target.value })} placeholder="Instructions (optional)" />
+                  </div>
+                  <div onClick={(e) => e.stopPropagation()}>
+                    <AudioUpload
+                      label="Section audio (plays for this section)"
+                      showRules
+                      value={s.audioUrl ? { url: s.audioUrl, assetId: s.audioAssetId || undefined, duration: s.audioDuration ?? undefined, rules: s.audioPlayRules } : null}
+                      onChange={(v) =>
+                        updateSection(i, {
+                          audioUrl: v?.url || null,
+                          audioAssetId: v?.assetId || null,
+                          audioDuration: v?.duration ?? null,
+                          audioPlayRules: v?.rules ?? null,
+                        })
+                      }
+                    />
                   </div>
                 </div>
               ))}

@@ -79,6 +79,11 @@ export const deleteAudio = asyncHandler(async (req: Request, res: Response) => {
     { audioAssetId: asset._id },
     { $set: { audioAssetId: null, audioUrl: null, audioDuration: null } },
   );
+  await Exam.updateMany(
+    { "sections.audioAssetId": asset._id },
+    { $set: { "sections.$[s].audioAssetId": null, "sections.$[s].audioUrl": null, "sections.$[s].audioDuration": null } },
+    { arrayFilters: [{ "s.audioAssetId": asset._id }] },
+  );
   res.json({ success: true, message: "Audio file deleted" });
 });
 
@@ -143,12 +148,15 @@ async function canAccessAudio(assetId: string, userId: string, role: string): Pr
   if (answerAudioAllowed) return true;
 
   const questions = await Question.find({ audioAssetId: assetId, deletedAt: null }).select("_id").lean();
-  if (questions.length === 0) return false;
   const qids = questions.map((q) => q._id);
 
   const exams = await Exam.find({
     deletedAt: null,
-    $or: [{ questionIds: { $in: qids } }, { "sections.questionIds": { $in: qids } }],
+    $or: [
+      { questionIds: { $in: qids } },
+      { "sections.questionIds": { $in: qids } },
+      { "sections.audioAssetId": assetId },
+    ],
   }).select("_id").lean();
   const examIds = exams.map((e) => e._id);
   if (examIds.length === 0) return false;

@@ -8,6 +8,17 @@ const sectionSchema = z.object({
   durationSec: z.number().int().positive().optional(),
   questionIds: z.array(idSchema).default([]),
   instructions: z.string().max(2000).optional().default(""),
+  audioUrl: z.string().max(1000).optional().nullable().default(null),
+  audioAssetId: idSchema.optional().nullable().default(null),
+  audioDuration: z.number().int().nonnegative().optional().nullable().default(null),
+  audioPlayRules: z
+    .object({
+      maxPlays: z.number().int().min(1).max(50).optional().nullable().default(null),
+      allowSeek: z.boolean().default(true),
+    })
+    .optional()
+    .nullable()
+    .default(null),
 });
 
 export const createExamSchema = z.object({

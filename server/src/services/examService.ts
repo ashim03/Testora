@@ -1,5 +1,5 @@
 import { Types } from "mongoose";
-import { Exam, ExamAssignment, ExamAttempt, ExamAnswer, Question, Batch } from "../models";
+import { Exam, ExamAssignment, ExamAttempt, ExamAnswer, Question, Batch, MediaAsset } from "../models";
 import { SECTIONAL_PARTS, SECTIONAL_CATEGORIES } from "@ielts-pte-platform/shared";
 import { ApiError, parseSort, generateReceipt } from "../utils/helpers";
 import { logActivity, audit, notify } from "./notificationService";
@@ -19,6 +19,7 @@ export async function createExam(
   actor: { id: string; role: string },
   ip?: string | null,
 ): Promise<unknown> {
+  await assertSectionAudioOwnership(data, actor);
   const exam = await Exam.create({ ...data, createdBy: actor.id });
   await audit("CREATE_EXAM", {
     actorId: actor.id,
@@ -35,9 +36,24 @@ export async function updateExam(id: string, data: Record<string, unknown>, acto
   const exam = await Exam.findOne({ _id: id, deletedAt: null });
   if (!exam) throw new ApiError(404, "Exam not found");
   if (String(exam.createdBy) !== actor.id) throw new ApiError(403, "You can only edit your own exams");
+  await assertSectionAudioOwnership(data, actor);
   Object.assign(exam, data);
   await exam.save();
   return exam;
+}
+
+async function assertSectionAudioOwnership(data: Record<string, unknown>, actor: { id: string; role: string }): Promise<void> {
+  if (actor.role === "SUPER_ADMIN") return;
+  const sections = Array.isArray(data.sections) ? data.sections : [];
+  const assetIds = new Set(sections.map((s) => (s as { audioAssetId?: unknown })?.audioAssetId).filter(Boolean));
+  if (assetIds.size === 0) return;
+  const assets = await MediaAsset.find({ _id: { $in: [...assetIds] }, kind: "AUDIO" }).lean();
+  const owned = new Set(assets.filter((a) => String(a.uploadedBy) === String(actor.id)).map((a) => String(a._id)));
+  for (const assetId of assetIds) {
+    if (!owned.has(String(assetId))) {
+      throw new ApiError(403, "You can only attach audio files you own");
+    }
+  }
 }
 
 export async function listExams(query: ExamQuery, viewer: { id: string; role: string }): Promise<{
@@ -85,7 +101,9 @@ async function questionsForExam(exam: {
 }, strip = false): Promise<unknown[]> {
   const qids = collectQuestionIds(exam);
   if (qids.length === 0) return [];
-  const qs = await Question.find({ _id: { $in: qids }, deletedAt: null }).lean();
+  const found = await Question.find({ _id: { $in: qids }, deletedAt: null }).lean();
+  const byId = new Map(found.map((q) => [String(q._id), q]));
+  const qs = qids.map((id) => byId.get(String(id))).filter((q): q is NonNullable<typeof q> => Boolean(q));
   if (!strip) return qs;
   return qs.map((q) => stripAnswers(q as unknown as Record<string, unknown>));
 }

@@ -50,7 +50,20 @@ const SINGLE_ANSWER_TYPES = new Set([
 
 interface AttemptData {
   attempt: { _id: string; status: string; expiresAt: string; startedAt: string; attemptNumber: number };
-  exam: { title: string; category: string; durationSec?: number | null };
+  exam: {
+    title: string;
+    category: string;
+    durationSec?: number | null;
+    sections?: Array<{
+      title: string;
+      instructions?: string;
+      questionIds?: string[];
+      audioUrl?: string | null;
+      audioAssetId?: string | null;
+      audioDuration?: number | null;
+      audioPlayRules?: AudioPlayRules | null;
+    }>;
+  };
   questions: QuestionView[];
   answers: Array<{ questionId: string; answer: unknown; answered: boolean }>;
   now: string;
@@ -60,6 +73,15 @@ interface Answer {
   questionId: string;
   answer: unknown;
   answered: boolean;
+}
+
+interface RenderSection {
+  _key: string;
+  title: string;
+  instructions?: string;
+  audioUrl?: string | null;
+  audioAssetId?: string | null;
+  audioPlayRules?: AudioPlayRules | null;
 }
 
 function defaultValue(q: QuestionView): unknown {
@@ -156,6 +178,45 @@ export function ExamAttemptPage() {
     setDirty(true);
   }
 
+  function renderSections(): Array<{ section: RenderSection | null; questions: Array<{ index: number; q: QuestionView }> }> {
+    const d = data!;
+    const qs = d.questions ?? [];
+    const secs: RenderSection[] = (d.exam.sections ?? []).map((s, i) => ({
+      _key: String(i),
+      title: s.title || `Section ${i + 1}`,
+      instructions: s.instructions || "",
+      audioUrl: s.audioUrl || null,
+      audioAssetId: s.audioAssetId || null,
+      audioPlayRules: s.audioPlayRules || null,
+    }));
+
+    const blocks: Array<{ section: RenderSection | null; questions: Array<{ index: number; q: QuestionView }> }> = [];
+
+    if (secs.length) {
+      let offset = 0;
+      for (const section of secs) {
+        const questionIds = d.exam.sections?.[Number(section._key)]?.questionIds ?? [];
+        const count = questionIds.length;
+        const group: Array<{ index: number; q: QuestionView }> = [];
+        for (let k = 0; k < count; k += 1) {
+          const q = qs[offset + k];
+          if (q) group.push({ index: offset + k, q });
+        }
+        offset += count;
+        blocks.push({ section, questions: group });
+      }
+      const leftovers: Array<{ index: number; q: QuestionView }> = [];
+      for (; offset < qs.length; offset += 1) {
+        if (qs[offset]) leftovers.push({ index: offset, q: qs[offset] });
+      }
+      if (leftovers.length) blocks.push({ section: null, questions: leftovers });
+    } else {
+      blocks.push({ section: null, questions: qs.map((q, i) => ({ index: i, q })) });
+    }
+
+    return blocks;
+  }
+
   if (isLoading) return <PageSpinner />;
   if (isError || !data) return <ErrorState message={error instanceof Error ? error.message : undefined} />;
 
@@ -187,20 +248,44 @@ export function ExamAttemptPage() {
         </Card>
       ) : (
         <div className="space-y-6">
-          {questions.map((q, i) => {
-            const id = String(q._id ?? q.id ?? i);
-            const current = answers[id];
-            return (
-              <QuestionCard
-                key={id}
-                index={i}
-                attemptId={QID}
-                question={q}
-                answer={current?.answer}
-                onAnswer={(v, answered) => updateAnswer(id, v, answered)}
-              />
-            );
-          })}
+          {renderSections().map((block, bi) => (
+            <div key={block.section?._key ?? `flat-${bi}`} className="space-y-6">
+              {block.section && (
+                <Card className="border-brand-500/40 bg-muted/20">
+                  <CardHeader>
+                    <CardTitle className="text-base">{block.section.title || `Section ${bi + 1}`}</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {block.section.instructions && <p className="text-sm text-muted-foreground">{block.section.instructions}</p>}
+                    {block.section.audioUrl && (
+                      <AudioPlayer
+                        src={block.section.audioUrl}
+                        assetId={block.section.audioAssetId ?? undefined}
+                        rules={block.section.audioPlayRules ?? null}
+                        storageKey={`${QID}:section:${bi}`}
+                        label="Section audio"
+                      />
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+              {block.questions.map((item) => {
+                const { index, q } = item;
+                const id = String(q._id ?? q.id ?? index);
+                const current = answers[id];
+                return (
+                  <QuestionCard
+                    key={id}
+                    index={index}
+                    attemptId={QID}
+                    question={q}
+                    answer={current?.answer}
+                    onAnswer={(v, answered) => updateAnswer(id, v, answered)}
+                  />
+                );
+              })}
+            </div>
+          ))}
           {questions.length === 0 && (
             <Card>
               <CardContent className="p-6 text-sm text-muted-foreground">This test has no questions assigned yet.</CardContent>

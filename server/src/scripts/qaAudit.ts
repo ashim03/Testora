@@ -160,6 +160,20 @@ async function main(): Promise<void> {
     }
   }
 
+  const ieltsFullMock = await checkApi("Student", "IELTS full mock listing", "/student/exams?search=%5BQA%5D%20IELTS%20Full%20Mock&limit=50", token("ieltsStudent"));
+  const fullMockRow = (dataRows(ieltsFullMock) as any[]).find((row: any) => row.exam?.title === "[QA] IELTS Full Mock" || row.title === "[QA] IELTS Full Mock");
+  if (fullMockRow?.exam?._id || fullMockRow?._id) {
+    const examId = fullMockRow.exam?._id || fullMockRow._id;
+    const startRes = await request(`/student/exams/${examId}/start`, {
+      method: "POST",
+      token: token("ieltsStudent"),
+    });
+    const attemptId = startRes.json?.data?.attempt?._id;
+    const attemptDetail = attemptId ? await checkApi("Audio", "Load full mock attempt", `/student/attempts/${attemptId}`, token("ieltsStudent")) : null;
+    const sectionAudio = ((attemptDetail?.data?.exam?.sections || []) as any[]).find((s: any) => s.audioUrl);
+    record("Audio", "Section-level audio present for student", Boolean(sectionAudio), sectionAudio?.title);
+  }
+
   const pteListening = await checkApi("Student", "PTE listening practice listing", "/student/practice?search=%5BQA%5D%20PTE%20Listening%20Practice&limit=10", token("pteStudent"));
   const ptePracticeRows = dataRows(pteListening);
   const pteListeningPractice = ptePracticeRows.find((row) => row.exam?.title === "[QA] PTE Listening Practice") || ptePracticeRows[0];

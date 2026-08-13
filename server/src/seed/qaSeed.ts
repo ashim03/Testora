@@ -1,6 +1,4 @@
 import "dotenv/config";
-import fs from "fs";
-import path from "path";
 import mongoose, { Types } from "mongoose";
 import {
   Assignment,
@@ -22,6 +20,7 @@ import {
   User,
 } from "../models";
 import { hashPassword } from "../utils/tokens";
+import { getMediaService } from "../services/mediaService";
 
 const QA_TAG = "QA-SEED";
 const QA_PASSWORD = "QaTest@12345";
@@ -142,25 +141,14 @@ function makeSilentWav(seconds = 1): Buffer {
 }
 
 async function createQaAudio(uploadedBy: Types.ObjectId, name: string): Promise<{ assetId: Types.ObjectId; url: string }> {
-  const id = new Types.ObjectId();
-  const publicId = `qa-${name}-${id.toHexString()}.wav`;
-  const dir = path.resolve(process.cwd(), process.env.UPLOADS_DIR || "uploads", "audio");
-  fs.mkdirSync(dir, { recursive: true });
-  const filePath = path.join(dir, publicId);
-  fs.writeFileSync(filePath, makeSilentWav(1));
-  const url = `/media/audio/${id.toHexString()}/file`;
-  await MediaAsset.create({
-    _id: id,
-    kind: "AUDIO",
-    url,
-    publicId,
+  const stored = await getMediaService().upload({
+    buffer: makeSilentWav(1),
     mimeType: "audio/wav",
-    size: fs.statSync(filePath).size,
-    uploadedBy,
-    ownerId: uploadedBy,
-    provider: "local",
+    kind: "AUDIO",
+    filename: `qa-${name}.wav`,
+    userId: String(uploadedBy),
   });
-  return { assetId: id, url };
+  return { assetId: new Types.ObjectId(stored.assetId || ""), url: stored.url };
 }
 
 async function main(): Promise<void> {
@@ -283,12 +271,22 @@ async function main(): Promise<void> {
     { createdBy: teacherId, title: "[QA] IELTS Reading Test B", type: "SECTIONAL", category: "IELTS_READING", durationSec: 300, questionIds: byCategory("IELTS_READING").slice().reverse(), attemptLimit: 3, autoSubmit: true, status: "PUBLISHED" },
     { createdBy: teacherId, title: "[QA] IELTS Writing Practice", type: "SECTIONAL", category: "IELTS_WRITING", durationSec: 300, questionIds: byCategory("IELTS_WRITING"), attemptLimit: 3, autoSubmit: true, status: "PUBLISHED" },
     { createdBy: teacherId, title: "[QA] IELTS Speaking Practice", type: "SECTIONAL", category: "IELTS_SPEAKING", durationSec: 300, questionIds: byCategory("IELTS_SPEAKING"), attemptLimit: 3, autoSubmit: true, status: "PUBLISHED" },
-    { createdBy: teacherId, title: "[QA] IELTS Full Mock", type: "MOCK", category: "IELTS_READING", durationSec: 600, sections: [{ title: "Listening", order: 0, durationSec: 120, questionIds: byCategory("IELTS_LISTENING"), instructions: "QA listening" }, { title: "Reading", order: 1, durationSec: 120, questionIds: byCategory("IELTS_READING"), instructions: "QA reading" }, { title: "Writing", order: 2, durationSec: 180, questionIds: byCategory("IELTS_WRITING"), instructions: "QA writing" }, { title: "Speaking", order: 3, durationSec: 180, questionIds: byCategory("IELTS_SPEAKING"), instructions: "QA speaking" }], attemptLimit: 2, autoSubmit: true, sectionWiseTiming: true, status: "PUBLISHED" },
+    { createdBy: teacherId, title: "[QA] IELTS Full Mock", type: "MOCK", category: "IELTS_READING", durationSec: 600, sections: [
+      { title: "Listening", order: 0, durationSec: 120, questionIds: byCategory("IELTS_LISTENING"), instructions: "QA listening", audioUrl: qAudio.url, audioAssetId: qAudio.assetId, audioDuration: 1, audioPlayRules: { maxPlays: null, allowSeek: true } },
+      { title: "Reading", order: 1, durationSec: 120, questionIds: byCategory("IELTS_READING"), instructions: "QA reading" },
+      { title: "Writing", order: 2, durationSec: 180, questionIds: byCategory("IELTS_WRITING"), instructions: "QA writing" },
+      { title: "Speaking", order: 3, durationSec: 180, questionIds: byCategory("IELTS_SPEAKING"), instructions: "QA speaking" },
+    ], attemptLimit: 2, autoSubmit: true, sectionWiseTiming: true, status: "PUBLISHED" },
     { createdBy: teacherId, title: "[QA] PTE Speaking Practice", type: "SECTIONAL", category: "PTE_SPEAKING", durationSec: 300, questionIds: byCategory("PTE_SPEAKING"), attemptLimit: 3, autoSubmit: true, status: "PUBLISHED" },
     { createdBy: teacherId, title: "[QA] PTE Writing Practice", type: "SECTIONAL", category: "PTE_WRITING", durationSec: 300, questionIds: byCategory("PTE_WRITING"), attemptLimit: 3, autoSubmit: true, status: "PUBLISHED" },
     { createdBy: teacherId, title: "[QA] PTE Reading Practice", type: "SECTIONAL", category: "PTE_READING", durationSec: 300, questionIds: byCategory("PTE_READING"), attemptLimit: 3, autoSubmit: true, status: "PUBLISHED" },
     { createdBy: teacherId, title: "[QA] PTE Listening Practice", type: "SECTIONAL", category: "PTE_LISTENING", durationSec: 300, questionIds: byCategory("PTE_LISTENING"), attemptLimit: 3, autoSubmit: true, status: "PUBLISHED" },
-    { createdBy: teacherId, title: "[QA] PTE Full Mock", type: "MOCK", category: "PTE_READING", durationSec: 600, sections: [{ title: "Speaking", order: 0, durationSec: 120, questionIds: byCategory("PTE_SPEAKING"), instructions: "QA speaking" }, { title: "Writing", order: 1, durationSec: 120, questionIds: byCategory("PTE_WRITING"), instructions: "QA writing" }, { title: "Reading", order: 2, durationSec: 180, questionIds: byCategory("PTE_READING"), instructions: "QA reading" }, { title: "Listening", order: 3, durationSec: 180, questionIds: byCategory("PTE_LISTENING"), instructions: "QA listening" }], attemptLimit: 2, autoSubmit: true, sectionWiseTiming: true, status: "PUBLISHED" },
+    { createdBy: teacherId, title: "[QA] PTE Full Mock", type: "MOCK", category: "PTE_READING", durationSec: 600, sections: [
+      { title: "Speaking", order: 0, durationSec: 120, questionIds: byCategory("PTE_SPEAKING"), instructions: "QA speaking" },
+      { title: "Writing", order: 1, durationSec: 120, questionIds: byCategory("PTE_WRITING"), instructions: "QA writing" },
+      { title: "Reading", order: 2, durationSec: 180, questionIds: byCategory("PTE_READING"), instructions: "QA reading" },
+      { title: "Listening", order: 3, durationSec: 180, questionIds: byCategory("PTE_LISTENING"), instructions: "QA listening", audioUrl: qAudio.url, audioAssetId: qAudio.assetId, audioDuration: 1, audioPlayRules: { maxPlays: null, allowSeek: true } },
+    ], attemptLimit: 2, autoSubmit: true, sectionWiseTiming: true, status: "PUBLISHED" },
   ]);
 
   await Promise.all(exams.flatMap((exam) => [
