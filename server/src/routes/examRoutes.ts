@@ -7,6 +7,9 @@ import {
   updateExamSchema,
   assignExamSchema,
   gradeSubmissionSchema,
+  createAssignmentSchema,
+  updateAssignmentSchema,
+  gradeAssignmentSchema,
 } from "@testora-platform/shared";
 
 const router = Router();
@@ -21,14 +24,14 @@ router.post("/submissions/:id/publish", exams.publishResult);
 router.post("/submissions/:id/reopen", exams.reopenAttempt);
 router.get("/results", exams.listResults);
 router.get("/assignments", exams.listAssignments);
-router.post("/assignments", exams.createAssignment);
+router.post("/assignments", validateRequest(createAssignmentSchema as never), exams.createAssignment);
 router.get("/assignments/:id", exams.getAssignment);
-router.patch("/assignments/:id", exams.updateAssignment);
+router.patch("/assignments/:id", validateRequest(updateAssignmentSchema as never), exams.updateAssignment);
 router.delete("/assignments/:id", exams.deleteAssignment);
 router.post("/assignments/:id/publish", exams.publishAssignment);
 router.get("/assignments/:assignmentId/submissions", exams.listAssignmentSubmissions);
 router.get("/assignment-submissions", exams.listAssignmentSubmissions);
-router.post("/assignment-submissions/:id/grade", exams.gradeAssignmentSubmission);
+router.post("/assignment-submissions/:id/grade", validateRequest(gradeAssignmentSchema as never), exams.gradeAssignmentSubmission);
 router.get("/teacher/:id", exams.getExamForTeacher);
 router.get("/:id", exams.getExam);
 router.patch("/:id", validateRequest(updateExamSchema as never), exams.updateExam);

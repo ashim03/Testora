@@ -42,11 +42,34 @@ export const createExamSchema = z.object({
   sectionWiseTiming: z.boolean().default(false),
   negativeMarking: z.boolean().default(false),
   showAnswersImmediately: z.boolean().default(false),
-  status: z.enum(["DRAFT", "SCHEDULED", "PUBLISHED", "ARCHIVED"]).optional(),
+  status: z.enum(["DRAFT", "SCHEDULED", "PUBLISHED", "ARCHIVED", "COMPLETED"]).optional(),
   passMarks: z.number().nonnegative().optional(),
 });
 
-export const updateExamSchema = createExamSchema.partial();
+export const updateExamSchema = z.object({
+  title: z.string().trim().min(3).max(200).optional(),
+  type: z.enum(["PRACTICE", "SECTIONAL", "MOCK", "CUSTOM"]).optional(),
+  category: z.enum(QUESTION_CATEGORIES as unknown as [string, ...string[]]).optional(),
+  description: z.string().max(2000).optional(),
+  durationSec: z.number().int().positive().max(43200).optional(),
+  part: z.string().trim().max(20).optional().nullable(),
+  sections: z.array(sectionSchema).max(6).optional(),
+  questionIds: z.array(idSchema).optional(),
+  startAt: z.string().datetime({ offset: true }).optional().nullable(),
+  endAt: z.string().datetime({ offset: true }).optional().nullable(),
+  attemptLimit: z.number().int().positive().max(100).optional(),
+  randomizeQuestions: z.boolean().optional(),
+  randomizeOptions: z.boolean().optional(),
+  allowNavigation: z.boolean().optional(),
+  allowReview: z.boolean().optional(),
+  autoSubmit: z.boolean().optional(),
+  allowLateSubmission: z.boolean().optional(),
+  sectionWiseTiming: z.boolean().optional(),
+  negativeMarking: z.boolean().optional(),
+  showAnswersImmediately: z.boolean().optional(),
+  status: z.enum(["DRAFT", "SCHEDULED", "PUBLISHED", "ARCHIVED", "COMPLETED"]).optional(),
+  passMarks: z.number().nonnegative().optional(),
+});
 
 export const assignExamSchema = z.object({
   studentIds: z.array(idSchema).optional().default([]),
@@ -87,6 +110,34 @@ export const createAssignmentSchema = z.object({
   allowedFileTypes: z.array(z.string()).optional().default([]),
   requiresAttachment: z.boolean().optional().default(false),
   allowResubmission: z.boolean().optional().default(true),
+});
+
+export const updateAssignmentSchema = z.object({
+  title: z.string().trim().min(3).max(200).optional(),
+  description: z.string().max(5000).optional(),
+  instructions: z.string().max(5000).optional(),
+  examId: idSchema.optional().nullable(),
+  questionIds: z.array(idSchema).optional(),
+  studentIds: z.array(idSchema).optional(),
+  batchIds: z.array(idSchema).optional(),
+  dueAt: z.string().datetime({ offset: true }).optional(),
+  maxMarks: z.number().positive().max(1000).optional(),
+  attachments: z.array(z.string().url()).optional(),
+  submissionType: z.enum(["TEXT", "FILE", "TEXT_AND_FILE", "LINK", "AUDIO_VIDEO"]).optional(),
+  allowedFileTypes: z.array(z.string()).optional(),
+  requiresAttachment: z.boolean().optional(),
+  allowResubmission: z.boolean().optional(),
+  status: z.enum(["DRAFT", "ASSIGNED", "OPEN", "CLOSED"]).optional(),
+});
+
+export const gradeAssignmentSchema = z.object({
+  score: z.number().nonnegative().max(1000).optional(),
+  feedback: z.string().max(4000).optional(),
+  requestResubmission: z.boolean().optional(),
+  published: z.boolean().optional(),
+  strengths: z.array(z.string()).max(20).optional(),
+  improvements: z.array(z.string()).max(20).optional(),
+  returnReason: z.string().max(2000).optional(),
 });
 
 export const studentAnswerSchema = z.object({

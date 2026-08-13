@@ -45,6 +45,9 @@ export const authenticate = async (req: Request, _res: Response, next: NextFunct
     if (user.status === "SUSPENDED") {
       throw new ApiError(403, "Account suspended");
     }
+    if (user.status === "INACTIVE") {
+      throw new ApiError(403, "Account is inactive");
+    }
     req.user = { id: String(user._id), role: user.role, status: user.status };
     next();
   } catch (err) {

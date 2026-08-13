@@ -117,7 +117,7 @@ const sanitizePerson = (user: {
 
 export async function forgotPassword(email: string): Promise<string> {
   const user = await User.findOne({ email: email.toLowerCase() });
-  if (!user) throw new ApiError(404, "No account found with that email");
+  if (!user) throw new ApiError(404, "If an account exists for that email, a reset link has been sent");
   const token = randomToken();
   await PasswordResetToken.create({
     userId: user._id,

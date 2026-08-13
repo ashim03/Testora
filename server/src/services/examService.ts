@@ -112,7 +112,7 @@ function collectQuestionIds(exam: {
   sections: Array<{ questionIds: Types.ObjectId[] }>;
   questionIds: Types.ObjectId[];
 }): Types.ObjectId[] {
-  return [...exam.questionIds, ...exam.sections.flatMap((s) => s.questionIds)];
+  return [...exam.sections.flatMap((s) => s.questionIds), ...exam.questionIds];
 }
 
 function stripAnswers(q: Record<string, unknown>): Record<string, unknown> {
@@ -156,6 +156,9 @@ export async function assignExam(
   const exam = await Exam.findOne({ _id: examId, deletedAt: null });
   if (!exam) throw new ApiError(404, "Exam not found");
   if (exam.status === "DRAFT") throw new ApiError(400, "Draft exams cannot be assigned");
+  if (actor.role !== "SUPER_ADMIN" && String(exam.createdBy) !== actor.id) {
+    throw new ApiError(403, "You can only assign your own exams");
+  }
   const students = new Set<string>();
   for (const id of options.studentIds || []) students.add(id);
   for (const batchId of options.batchIds || []) {
@@ -218,12 +221,13 @@ export async function listPracticeExams(studentId: string, query: { page?: numbe
   const page = query.page || 1;
   const limit = query.limit || 10;
   const teacherId = await resolveTeacherIdForStudent(studentId);
+  if (!teacherId) return { data: [], total: 0, page, limit, pages: 0 };
   const filter: Record<string, unknown> = {
     type: { $in: ["PRACTICE", "SECTIONAL"] },
     status: "PUBLISHED",
     deletedAt: null,
+    createdBy: teacherId,
   };
-  if (teacherId) filter.createdBy = teacherId;
   if (query.category) filter.category = query.category;
   if (query.part) filter.part = query.part;
   if (query.search) {
@@ -342,7 +346,8 @@ export async function startAttempt(examId: string, studentId: string): Promise<u
   const isPracticeForStudent =
     ["PRACTICE", "SECTIONAL"].includes(exam.type) &&
     exam.status === "PUBLISHED" &&
-    (!teacherId || String(exam.createdBy) === String(teacherId));
+    !!teacherId &&
+    String(exam.createdBy) === String(teacherId);
   if (!assignment) {
     if (!isPracticeForStudent) throw new ApiError(403, "Exam not assigned to you");
     assignment = await ExamAssignment.create({
@@ -355,15 +360,13 @@ export async function startAttempt(examId: string, studentId: string): Promise<u
       dueAt: exam.endAt,
     });
   }
-  const doesStartWindowBlock = (() => {
-    const now = Date.now();
-    if (exam.startAt && now < new Date(exam.startAt).getTime()) return true;
-    return false;
-  })();
-  if (doesStartWindowBlock) {
+  const now = Date.now();
+  if (exam.startAt && now < new Date(exam.startAt).getTime()) {
     throw new ApiError(400, "Exam has not started yet");
   }
-  const now = Date.now();
+  if (exam.endAt && now > new Date(exam.endAt).getTime()) {
+    throw new ApiError(400, "Exam has closed");
+  }
   const attemptCount = await ExamAttempt.countDocuments({ examId, studentId });
   if (attemptCount >= exam.attemptLimit) {
     throw new ApiError(400, "Attempt limit reached");
@@ -371,16 +374,13 @@ export async function startAttempt(examId: string, studentId: string): Promise<u
   const last = await ExamAttempt.findOne({ examId, studentId }).sort({ attemptNumber: -1 }).lean();
   if (last && last.status === "IN_PROGRESS") {
     const expired = now > new Date(last.expiresAt).getTime();
-    if (expired && exam.autoSubmit) {
+    if (expired) {
       await ExamAttempt.updateOne({ _id: last._id }, { $set: { status: "SUBMITTED", submittedAt: new Date(), receipt: generateReceipt() } });
       await ExamAssignment.updateOne({ examId, studentId }, { $set: { status: "COMPLETED" } });
       await afterSubmit(String(last._id));
       return { attempt: last, exam, autoSubmitted: true, resuming: false };
     }
     return { attempt: last, exam, resuming: true };
-  }
-  if (last && last.status === "SUBMITTED") {
-    throw new ApiError(400, "This attempt has already been submitted");
   }
   const durationSec = exam.durationSec || 3600;
   const attemptNumber = attemptCount + 1;
@@ -416,7 +416,15 @@ export async function saveAnswers(
   const attempt = await ExamAttempt.findOne({ _id: attemptId, studentId });
   if (!attempt) throw new ApiError(404, "Attempt not found");
   if (attempt.status !== "IN_PROGRESS") throw new ApiError(400, "Attempt is not in progress");
+  const exam = await Exam.findById(attempt.examId);
+  if (exam && !exam.allowLateSubmission && Date.now() > new Date(attempt.expiresAt).getTime()) {
+    throw new ApiError(400, "Attempt time has expired");
+  }
+  const qids = exam ? new Set(collectQuestionIds(exam).map(String)) : null;
   for (const a of answers) {
+    if (qids && !qids.has(String(a.questionId))) {
+      throw new ApiError(400, "Answer submitted for a question not in this exam");
+    }
     const answered = a.answered !== false && a.answer !== null && a.answer !== "" && a.answer !== undefined;
     await ExamAnswer.updateOne(
       { attemptId, questionId: a.questionId },

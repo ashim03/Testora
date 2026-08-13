@@ -79,7 +79,15 @@ export async function gradeObjectiveAttempt(attemptId: string): Promise<{
     const isObjective = OBJECTIVE_TYPES.has(q.type);
     if (isObjective) {
       maxScore += q.marks;
-      const { earned, isCorrect } = scoreAnswer(q, answer);
+      const raw = answerMap.get(String(q._id));
+      const attempted = !(raw === undefined || raw === null || raw === "" || (Array.isArray(raw) && raw.length === 0));
+      let earned = 0;
+      let isCorrect = false;
+      if (attempted) {
+        const res = scoreAnswer(q, raw);
+        isCorrect = res.isCorrect;
+        earned = res.isCorrect || exam.negativeMarking ? res.earned : 0;
+      }
       objectiveScore += earned;
       rawScore += earned;
       if (isCorrect) answered += 1;
@@ -141,20 +149,22 @@ export async function gradeAttemptManually(
   const studentId = attempt.studentId.toString();
   const teacherId = String(exam.createdBy);
 
+  const gradeScore = data.score ?? attempt.objectiveScore ?? 0;
+  const finalScore = Math.max(0, Math.min(gradeScore, attempt.maxScore ?? gradeScore));
   const grade = await Grade.create({
     attemptId: attempt._id,
     graderId: actor.id,
     studentId,
     teacherId,
-    score: data.score ?? attempt.objectiveScore ?? 0,
+    score: gradeScore,
     criteria: data.criteria || [],
     feedback: data.feedback || "",
     strengths: data.strengths || [],
     improvements: data.improvements || [],
     status: data.saveAsDraft ? "DRAFT" : "PUBLISHED",
   });
-  attempt.subjectiveScore = (data.score ?? 0) - (attempt.objectiveScore ?? 0);
-  attempt.finalScore = data.score ?? attempt.objectiveScore ?? 0;
+  attempt.subjectiveScore = Math.max(0, finalScore - (attempt.objectiveScore ?? 0));
+  attempt.finalScore = finalScore;
   attempt.practiceBand = await bandFromScore(exam, attempt.finalScore, attempt.maxScore || 1);
   attempt.estimatedPteScore = await pteFromScore(exam, attempt.finalScore, attempt.maxScore || 1);
   if (data.requestResubmission) {
@@ -191,7 +201,7 @@ export async function publishResult(attemptId: string, actor: { id: string; role
   }
   const finalScore = attempt.finalScore ?? attempt.objectiveScore ?? 0;
   const maxScore = attempt.maxScore ?? finalScore;
-  const percentage = maxScore > 0 ? Math.round((finalScore / maxScore) * 10000) / 100 : 0;
+  const percentage = maxScore > 0 ? Math.min(100, Math.max(0, Math.round((finalScore / maxScore) * 10000) / 100)) : 0;
   await Result.updateOne(
     { attemptId },
     {
@@ -238,6 +248,9 @@ export async function reopenAttempt(attemptId: string, actor: { id: string; role
   const attempt = await ExamAttempt.findById(attemptId);
   if (!attempt) throw new ApiError(404, "Attempt not found");
   const exam = await Exam.findById(attempt.examId);
+  if (actor.role === "TEACHER" && exam && String(exam.createdBy) !== actor.id) {
+    throw new ApiError(403, "You can only reopen attempts for exams you created");
+  }
   const durationSec = exam?.durationSec || 3600;
   attempt.status = "IN_PROGRESS";
   attempt.submittedAt = null;
@@ -263,7 +276,7 @@ export async function bandFromScore(exam: { category: string }, score: number, m
   const rows = await conversionRows(exam.category);
   if (rows.length === 0) {
     const pct = maxScore > 0 ? score / maxScore : 0;
-    return Math.round((pct * 9) * 2) / 2;
+    return Math.max(0, Math.round((pct * 9) * 2) / 2);
   }
   const rawPct = maxScore > 0 ? (score / maxScore) * 100 : 0;
   const matched = rows.find((r) => rawPct >= r.minRaw && rawPct <= r.maxRaw);

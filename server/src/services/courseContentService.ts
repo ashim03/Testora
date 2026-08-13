@@ -58,7 +58,19 @@ export async function listCoursesForTeacher(teacherId: string, query: CourseCont
   return { data, total, page, limit, pages: Math.ceil(total / limit) };
 }
 
+async function assertCanViewCourse(courseId: string, actorId: string): Promise<void> {
+  const course = await Course.findById(courseId);
+  if (!course) throw new ApiError(404, "Course not found");
+  if (course.instructorId && String(course.instructorId) === actorId) return;
+  const viaBatch = await Batch.findOne({ teacherId: actorId, archived: false, courseId });
+  if (viaBatch) return;
+  throw new ApiError(403, "You are not authorized to view this course");
+}
+
 export async function getCourseFull(courseId: string, role: string, actorId: string): Promise<unknown> {
+  if (role !== "SUPER_ADMIN" && role !== "STUDENT") {
+    await assertCanViewCourse(courseId, actorId);
+  }
   const course = await Course.findById(courseId)
     .populate("instructorId", "firstName lastName email")
     .populate("categoryId", "name");
@@ -200,7 +212,12 @@ export async function deleteLesson(lessonId: string, actor: { id: string; role: 
   await lesson.deleteOne();
 }
 
-export async function reorderLessons(lessonIds: string[]): Promise<void> {
+export async function reorderLessons(lessonIds: string[], actor: { id: string; role: string }): Promise<void> {
+  const lessons = await Lesson.find({ _id: { $in: lessonIds } }).select("courseId").lean();
+  const courseIds = new Set(lessons.map((l) => String(l.courseId)));
+  for (const cid of courseIds) {
+    await assertCanManageCourse(cid, actor.id, actor.role);
+  }
   for (let i = 0; i < lessonIds.length; i++) {
     await Lesson.updateOne({ _id: lessonIds[i] }, { $set: { order: i + 1 } });
   }
@@ -296,7 +313,8 @@ export async function enrollStudents(courseId: string, options: { studentIds?: s
   return { enrolled: students.size };
 }
 
-export async function listEnrollments(courseId: string, query: { page?: number; limit?: number; search?: string; status?: string }): Promise<unknown> {
+export async function listEnrollments(courseId: string, query: { page?: number; limit?: number; search?: string; status?: string }, actor: { id: string; role: string }): Promise<unknown> {
+  await assertCanManageCourse(courseId, actor.id, actor.role);
   const page = query.page || 1;
   const limit = query.limit || 10;
   const filter: Record<string, unknown> = { courseId };

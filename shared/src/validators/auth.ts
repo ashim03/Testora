@@ -162,6 +162,14 @@ export const createBatchSchema = z.object({
   description: z.string().max(1000).optional().default(""),
 });
 
+export const updateBatchSchema = z.object({
+  name: nameField.optional(),
+  courseId: idSchema.optional(),
+  startDate: z.string().datetime({ offset: true }).optional(),
+  endDate: z.string().datetime({ offset: true }).optional(),
+  description: z.string().max(1000).optional(),
+});
+
 export const categorySchema = z.object({
   name: nameField,
   code: z.string().trim().min(1).max(40).optional(),

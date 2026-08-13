@@ -201,6 +201,9 @@ export async function gradeSubmission(
     submission.feedback = data.feedback !== undefined ? data.feedback : submission.feedback;
   } else {
     if (data.score !== undefined) {
+      if (data.score < 0 || data.score > assignment.maxMarks) {
+        throw new ApiError(400, `Score must be between 0 and ${assignment.maxMarks}`);
+      }
       submission.marks = data.score;
       submission.maxMarks = assignment.maxMarks;
       submission.status = data.published ? "PUBLISHED" : "GRADED";
@@ -262,12 +265,29 @@ export async function submitAssignment(assignmentId: string, studentId: string, 
   const assignment = await Assignment.findOne({ _id: assignmentId, deletedAt: null });
   if (!assignment) throw new ApiError(404, "Assignment not found");
   if (!assignment.studentIds.some((s) => String(s) === studentId)) throw new ApiError(403, "Assignment not assigned to you");
+  if (!assignment.published) throw new ApiError(400, "This assignment is not accepting submissions yet");
+  if (assignment.status === "CLOSED") throw new ApiError(400, "This assignment is closed");
+  if (assignment.dueAt && Date.now() > new Date(assignment.dueAt).getTime()) {
+    throw new ApiError(400, "The submission deadline has passed");
+  }
   const link = (data.link || "").trim();
-  const content = [data.content || "", link ? `Submission link: ${link}` : ""].filter(Boolean).join("\n\n");
+  if (link && !/^https?:\/\/.+\..+/.test(link)) throw new ApiError(400, "Submission link must be a valid URL");
+  const files = data.files || [];
+  const content = (data.content || "").trim();
+  const requiresText = assignment.submissionType === "TEXT" || assignment.submissionType === "TEXT_AND_FILE";
+  const requiresFile = assignment.submissionType === "FILE" || assignment.submissionType === "AUDIO_VIDEO" || assignment.requiresAttachment;
+  const requiresLink = assignment.submissionType === "LINK";
+  if (requiresText && !content) throw new ApiError(400, "A written response is required for this submission");
+  if (requiresFile && files.length === 0) throw new ApiError(400, "A file or recording is required for this submission");
+  if (requiresLink && !link) throw new ApiError(400, "A submission link is required");
+  const composed = [content, link ? `Submission link: ${link}` : ""].filter(Boolean).join("\n\n");
   const existing = await AssignmentSubmission.findOne({ assignmentId, studentId });
   if (existing) {
-    if (content) existing.content = content;
-    if (data.files) existing.files = data.files;
+    if ((existing.status === "GRADED" || existing.status === "PUBLISHED") && !assignment.allowResubmission) {
+      throw new ApiError(400, "This assignment does not allow resubmission");
+    }
+    if (composed) existing.content = composed;
+    if (files.length) existing.files = files;
     existing.submittedAt = new Date();
     existing.isDraft = false;
     existing.status = existing.status === "RETURNED" || existing.status === "RESUBMITTED" ? "RESUBMITTED" : "SUBMITTED";
@@ -282,8 +302,8 @@ export async function submitAssignment(assignmentId: string, studentId: string, 
   const submission = await AssignmentSubmission.create({
     assignmentId,
     studentId,
-    content,
-    files: data.files || [],
+    content: composed,
+    files,
     submittedAt: new Date(),
     isDraft: false,
     status: "SUBMITTED",

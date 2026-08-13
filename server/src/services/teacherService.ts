@@ -41,11 +41,17 @@ export async function listBatches(teacherId: string, courseType?: string): Promi
   }));
 }
 
-export async function addStudentsToBatch(batchId: string, studentIds: string[]): Promise<void> {
+export async function addStudentsToBatch(batchId: string, studentIds: string[], teacherId: string): Promise<void> {
+  const batch = await Batch.findById(batchId);
+  if (!batch) throw new ApiError(404, "Batch not found");
+  if (String(batch.teacherId) !== teacherId) throw new ApiError(403, "Forbidden");
   await Batch.updateOne({ _id: batchId }, { $addToSet: { studentIds: { $each: studentIds } } });
 }
 
-export async function removeStudentFromBatch(batchId: string, studentId: string): Promise<void> {
+export async function removeStudentFromBatch(batchId: string, studentId: string, teacherId: string): Promise<void> {
+  const batch = await Batch.findById(batchId);
+  if (!batch) throw new ApiError(404, "Batch not found");
+  if (String(batch.teacherId) !== teacherId) throw new ApiError(403, "Forbidden");
   await Batch.updateOne({ _id: batchId }, { $pull: { studentIds: studentId } });
 }
 

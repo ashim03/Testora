@@ -80,7 +80,7 @@ export const updateBatch = asyncHandler(async (req: Request, res: Response) => {
 
 export const addStudentsToBatch = asyncHandler(async (req: Request, res: Response) => {
   if (!req.user) throw new ApiError(401, "Authentication required");
-  await teacherService.addStudentsToBatch(String(req.params.id), req.body.studentIds);
+  await teacherService.addStudentsToBatch(String(req.params.id), req.body.studentIds, req.user.id);
   res.json({ success: true, message: "Students added to batch" });
 });
 

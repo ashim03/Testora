@@ -84,7 +84,8 @@ export const deleteLesson = asyncHandler(async (req: Request, res: Response) => 
 });
 
 export const reorderLessons = asyncHandler(async (req: Request, res: Response) => {
-  await courseContent.reorderLessons(req.body.lessonIds || []);
+  if (!req.user) throw new ApiError(401, "Authentication required");
+  await courseContent.reorderLessons(req.body.lessonIds || [], { id: req.user.id, role: req.user.role });
   res.json({ success: true, message: "Lessons reordered" });
 });
 
@@ -131,7 +132,8 @@ export const enrollStudents = asyncHandler(async (req: Request, res: Response) =
 });
 
 export const listEnrollments = asyncHandler(async (req: Request, res: Response) => {
-  const data = await courseContent.listEnrollments(String(req.params.courseId), { page: pageOf(req), limit: limitOf(req), search: (req.query.search as string) || "", status: (req.query.status as string) || "" });
+  if (!req.user) throw new ApiError(401, "Authentication required");
+  const data = await courseContent.listEnrollments(String(req.params.courseId), { page: pageOf(req), limit: limitOf(req), search: (req.query.search as string) || "", status: (req.query.status as string) || "" }, { id: req.user.id, role: req.user.role });
   res.json({ success: true, message: "Enrollments", data });
 });
 

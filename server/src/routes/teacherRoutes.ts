@@ -7,6 +7,7 @@ import {
   createStudentSchema,
   updateStudentSchema,
   createBatchSchema,
+  updateBatchSchema,
 } from "@testora-platform/shared";
 
 const statusSchema = z.object({ status: z.enum(["ACTIVE", "INACTIVE", "SUSPENDED"]) });
@@ -27,7 +28,7 @@ router.patch("/students/:id/reset-password", validateRequest(resetPasswordSchema
 
 router.get("/batches", teacher.listBatches);
 router.post("/batches", validateRequest(createBatchSchema as never), teacher.createBatch);
-router.patch("/batches/:id", validateRequest(createBatchSchema as never), teacher.updateBatch);
+router.patch("/batches/:id", validateRequest(updateBatchSchema as never), teacher.updateBatch);
 router.patch("/batches/:id/students", validateRequest(batchStudentsSchema as never), teacher.addStudentsToBatch);
 
 router.get("/reports", teacher.reports);

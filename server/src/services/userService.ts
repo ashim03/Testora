@@ -213,6 +213,9 @@ export async function updateUser(id: string, data: UpdateUserData, actor: { id: 
     if (user.role === "SUPER_ADMIN" && data.status !== "ACTIVE") {
       throw new ApiError(400, "Super admin account cannot be deactivated");
     }
+    if (actor.role === "TEACHER") {
+      throw new ApiError(403, "Use the dedicated status endpoint to change a student status");
+    }
     user.status = data.status;
   }
   await user.save();
@@ -220,6 +223,10 @@ export async function updateUser(id: string, data: UpdateUserData, actor: { id: 
     const profile = await StudentProfile.findOne({ userId: user._id });
     const patch: Record<string, unknown> = {};
     if (data.teacherId) {
+      const target = await User.findById(data.teacherId);
+      if (!target || target.deletedAt || target.role !== "TEACHER") {
+        throw new ApiError(400, "Invalid teacher selected");
+      }
       patch.currentTeacherId = new Types.ObjectId(data.teacherId);
       await endActiveAssignments(String(user._id));
       await TeacherStudentAssignment.create({
@@ -231,6 +238,11 @@ export async function updateUser(id: string, data: UpdateUserData, actor: { id: 
       });
     }
     if (data.batchId) {
+      const batch = await Batch.findById(data.batchId);
+      if (!batch) throw new ApiError(404, "Batch not found");
+      if (actor.role === "TEACHER" && String(batch.teacherId) !== actor.id) {
+        throw new ApiError(403, "You can only add students to your own batches");
+      }
       patch.currentBatchId = new Types.ObjectId(data.batchId);
       await Batch.updateOne({ _id: data.batchId }, { $addToSet: { studentIds: user._id } });
     }
