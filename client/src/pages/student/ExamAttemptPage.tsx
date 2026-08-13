@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -7,6 +7,7 @@ import { Button } from "../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
 import { PageSpinner, ErrorState } from "../../components/ui/feedback";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../../components/ui/dialog";
 import { SpeakingRecorder, AUDIO_QUESTION_TYPES } from "../../components/SpeakingRecorder";
 import { AudioPlayer, type AudioPlayRules } from "../../components/shared/AudioPlayer";
 import { formatDuration, getErrorMessage } from "../../utils";
@@ -47,6 +48,8 @@ const SINGLE_ANSWER_TYPES = new Set([
   "HIGHLIGHT_CORRECT_SUMMARY",
   "SELECT_MISSING_WORD",
 ]);
+
+const TERMINAL_ATTEMPT_STATES = new Set(["SUBMITTED", "UNDER_REVIEW", "GRADED", "PUBLISHED"]);
 
 interface AttemptData {
   attempt: { _id: string; status: string; expiresAt: string; startedAt: string; attemptNumber: number };
@@ -105,9 +108,20 @@ export function ExamAttemptPage() {
   const [answers, setAnswers] = useState<Record<string, Answer>>({});
   const [remaining, setRemaining] = useState<number | null>(null);
   const [dirty, setDirty] = useState(false);
+  const [confirmSubmit, setConfirmSubmit] = useState(false);
+  const [retryTick, setRetryTick] = useState(0);
+  const hydratedRef = useRef<string | null>(null);
+  const retryCountRef = useRef(0);
 
   useEffect(() => {
     if (!data) return;
+    if (TERMINAL_ATTEMPT_STATES.has(data.attempt.status)) {
+      toast.info("This attempt has already been submitted");
+      navigate("/student/results", { replace: true });
+      return;
+    }
+    if (hydratedRef.current === QID) return;
+    hydratedRef.current = QID;
     const initial: Record<string, Answer> = {};
     const qs = data.questions ?? [];
     const known = new Map((data.answers ?? []).map((a) => [String(a.questionId), a]));
@@ -121,8 +135,14 @@ export function ExamAttemptPage() {
       };
     });
     setAnswers(initial);
+    setDirty(false);
+  }, [data, QID, navigate]);
+
+  useEffect(() => {
+    if (!data) return;
     const expires = new Date(data.attempt.expiresAt).getTime();
-    setRemaining(Math.max(0, Math.floor((expires - Date.now()) / 1000)));
+    const serverOffset = new Date(data.now).getTime() - Date.now();
+    setRemaining(Math.max(0, Math.floor((expires - (Date.now() + serverOffset)) / 1000)));
   }, [data]);
 
   const timerRunning = remaining != null && remaining > 0;
@@ -139,7 +159,17 @@ export function ExamAttemptPage() {
         answers: payload.map((a) => ({ questionId: a.questionId, answer: a.answer, answered: a.answered })),
       });
     },
-    onError: (err) => toast.error(getErrorMessage(err)),
+    onError: (err) => {
+      toast.error(getErrorMessage(err));
+      setDirty(true);
+      if (retryCountRef.current < 5) {
+        retryCountRef.current += 1;
+        setRetryTick((t) => t + 1);
+      }
+    },
+    onSuccess: () => {
+      retryCountRef.current = 0;
+    },
   });
 
   const submitMutation = useMutation({
@@ -157,7 +187,7 @@ export function ExamAttemptPage() {
 
   useEffect(() => {
     if (remaining == null) return;
-    if (remaining === 0) {
+    if (remaining === 0 && !submitMutation.isPending && !submitMutation.isSuccess) {
       submitMutation.mutate();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -171,7 +201,7 @@ export function ExamAttemptPage() {
     }, 2500);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [answers, dirty]);
+  }, [answers, dirty, retryTick]);
 
   function updateAnswer(id: string, value: unknown, answered: boolean) {
     setAnswers((prev) => ({ ...prev, [id]: { questionId: id, answer: value, answered } }));
@@ -222,10 +252,12 @@ export function ExamAttemptPage() {
 
   const hasExpired = remaining != null && remaining === 0;
   const questions = data.questions ?? [];
+  const answeredCount = Object.values(answers).filter((a) => a.answered).length;
+  const unansweredCount = Math.max(0, questions.length - answeredCount);
 
   return (
     <div className="space-y-6">
-      <div className="sticky top-14 z-20 flex flex-wrap items-center justify-between gap-3 border-b bg-background/80 py-2 backdrop-blur">
+      <div className="sticky top-16 z-20 flex flex-wrap items-center justify-between gap-3 border-b bg-background/80 py-2 backdrop-blur">
         <div>
           <h1 className="text-lg font-bold">{data.exam.title}</h1>
           <p className="text-xs text-muted-foreground">{data.exam.category.replace(/_/g, " ")} · Attempt #{data.attempt.attemptNumber}</p>
@@ -234,7 +266,7 @@ export function ExamAttemptPage() {
           {remaining != null && remaining <= 60 && !hasExpired && <Badge variant="destructive">Time left: {formatDuration(remaining)}</Badge>}
           {remaining != null && remaining > 60 && !hasExpired && <Badge variant="secondary">Time left: {formatDuration(remaining)}</Badge>}
           {hasExpired && <Badge variant="destructive">Time expired</Badge>}
-          <Button size="sm" onClick={() => submitMutation.mutate()} disabled={submitMutation.isPending}>
+          <Button size="sm" onClick={() => setConfirmSubmit(true)} disabled={submitMutation.isPending || hasExpired}>
             Submit
           </Button>
         </div>
@@ -242,8 +274,15 @@ export function ExamAttemptPage() {
 
       {hasExpired ? (
         <Card>
-          <CardContent className="p-6">
-            <p className="text-sm text-muted-foreground">Your allocated time has ended. Submitting your test now...</p>
+          <CardContent className="space-y-4 p-6">
+            <p className="text-sm text-muted-foreground">
+              {submitMutation.isPending
+                ? "Your allocated time has ended. Submitting your test now..."
+                : "Your allocated time has ended. Your test could not be submitted automatically."}
+            </p>
+            {!submitMutation.isPending && (
+              <Button size="sm" onClick={() => submitMutation.mutate()}>Retry submission</Button>
+            )}
           </CardContent>
         </Card>
       ) : (
@@ -293,6 +332,25 @@ export function ExamAttemptPage() {
           )}
         </div>
       )}
+
+      <Dialog open={confirmSubmit} onOpenChange={setConfirmSubmit}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Submit test?</DialogTitle>
+            <DialogDescription>
+              You have answered {answeredCount} of {questions.length} question{questions.length === 1 ? "" : "s"}.
+              {unansweredCount > 0 && ` ${unansweredCount} question${unansweredCount === 1 ? "" : "s"} are still unanswered.`}
+              {" "}This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmSubmit(false)}>Continue test</Button>
+            <Button onClick={() => { setConfirmSubmit(false); submitMutation.mutate(); }} disabled={submitMutation.isPending}>
+              Confirm submission
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
