@@ -35,6 +35,7 @@ export function UserRoleTable({ role, title, basePath, resource }: { role: strin
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
+  const [tempPassword, setTempPassword] = useState(generateTemporaryPassword);
 
   const listQuery = useQuery({
     queryKey: [basePath, "users", { page, search }],
@@ -68,10 +69,11 @@ export function UserRoleTable({ role, title, basePath, resource }: { role: strin
 
   const resetPw = useMutation({
     mutationFn: async (id: string) => {
-      const res = await apiPatch(`${basePath}/${id}/reset-password`, { password: "NewPass@12345" });
-      return res;
+      const tempPassword = generateTemporaryPassword();
+      const res = await apiPatch(`${basePath}/${id}/reset-password`, { password: tempPassword });
+      return { res, tempPassword };
     },
-    onSuccess: () => toast.success("Password reset to NewPass@12345"),
+    onSuccess: (data) => toast.success(`Password reset. Temporary password: ${data.tempPassword}`),
     onError: (err) => toast.error(getErrorMessage(err)),
   });
 
@@ -99,7 +101,7 @@ export function UserRoleTable({ role, title, basePath, resource }: { role: strin
           <h1 className="text-2xl font-bold">{title}</h1>
           <p className="text-sm text-muted-foreground">Manage {title.toLowerCase()}</p>
         </div>
-        <Button onClick={() => setOpen(true)}><Plus className="size-4" /> Add {title}</Button>
+        <Button onClick={() => { setTempPassword(generateTemporaryPassword()); setOpen(true); }}><Plus className="size-4" /> Add {title}</Button>
       </div>
 
       <Card>
@@ -167,7 +169,7 @@ export function UserRoleTable({ role, title, basePath, resource }: { role: strin
             </div>
             <div className="space-y-1.5">
               <Label>Temporary password</Label>
-              <Input name="password" type="text" defaultValue="NewPass@12345" required />
+              <Input name="password" type="text" value={tempPassword} onChange={(e) => setTempPassword(e.target.value)} required />
             </div>
             <div className="space-y-1.5">
               <Label>Phone</Label>
@@ -190,6 +192,15 @@ export function UserRoleTable({ role, title, basePath, resource }: { role: strin
       </Dialog>
     </div>
   );
+}
+
+export function generateTemporaryPassword(): string {
+  const chars = "abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789!@#$%";
+  const arr = new Uint32Array(12);
+  crypto.getRandomValues(arr);
+  let s = "";
+  for (let i = 0; i < arr.length; i++) s += chars[arr[i] % chars.length];
+  return "Tp!" + s;
 }
 
 export function StatusBadge({ status }: { status: string }) {

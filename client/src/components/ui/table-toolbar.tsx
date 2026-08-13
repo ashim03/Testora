@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, SlidersHorizontal } from "lucide-react";
+import { ChevronLeft, ChevronRight, Search } from "lucide-react";
 import { Button } from "./button";
 import { Input } from "./input";
 import { Skeleton } from "./skeleton";
@@ -40,7 +40,7 @@ export function TableToolbar({ search, onSearchChange, searchPlaceholder, childr
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       {onSearchChange ? (
         <div className="relative w-full max-w-xs">
-          <SlidersHorizontal className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder={searchPlaceholder || "Search..."}
             className="pl-9"

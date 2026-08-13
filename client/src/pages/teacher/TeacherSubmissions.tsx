@@ -484,7 +484,12 @@ function ExamReviewDialog({ submission, onClose, onGraded }: { submission: ExamS
               onSubmit={(e) => {
                 e.preventDefault();
                 const fd = new FormData(e.currentTarget);
-                gradeMutation.mutate({ score: Number(fd.get("score")), feedback: (fd.get("feedback") as string) || undefined });
+                const score = Number(fd.get("score"));
+                if (maxScore != null && !Number.isNaN(score) && score > maxScore) {
+                  toast.error(`Score cannot exceed ${maxScore}`);
+                  return;
+                }
+                gradeMutation.mutate({ score, feedback: (fd.get("feedback") as string) || undefined });
               }}
               className="mt-4 space-y-3 rounded-md border bg-muted/30 p-4"
             >
@@ -496,6 +501,7 @@ function ExamReviewDialog({ submission, onClose, onGraded }: { submission: ExamS
                     type="number"
                     step="0.5"
                     min="0"
+                    max={maxScore != null ? maxScore : undefined}
                     required
                     value={currentScore}
                     onChange={(e) => setScore(e.target.value)}

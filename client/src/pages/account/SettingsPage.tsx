@@ -64,7 +64,7 @@ export function SettingsPage() {
         <p className="text-sm text-muted-foreground">Manage appearance, notifications and account</p>
       </div>
 
-      {user?.role === "TEACHER" || user?.role === "SUPER_ADMIN" ? <BrandingEditor /> : null}
+      {user?.role === "SUPER_ADMIN" ? <BrandingEditor /> : null}
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>

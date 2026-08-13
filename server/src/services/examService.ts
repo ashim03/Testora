@@ -35,7 +35,7 @@ export async function createExam(
 export async function updateExam(id: string, data: Record<string, unknown>, actor: { id: string; role: string }): Promise<unknown> {
   const exam = await Exam.findOne({ _id: id, deletedAt: null });
   if (!exam) throw new ApiError(404, "Exam not found");
-  if (String(exam.createdBy) !== actor.id) throw new ApiError(403, "You can only edit your own exams");
+  if (actor.role !== "SUPER_ADMIN" && String(exam.createdBy) !== actor.id) throw new ApiError(403, "You can only edit your own exams");
   await assertSectionAudioOwnership(data, actor);
   Object.assign(exam, data);
   await exam.save();
@@ -125,7 +125,7 @@ function stripAnswers(q: Record<string, unknown>): Record<string, unknown> {
 export async function publishExam(id: string, actor: { id: string; role: string }): Promise<unknown> {
   const exam = await Exam.findOne({ _id: id, deletedAt: null });
   if (!exam) throw new ApiError(404, "Exam not found");
-  if (String(exam.createdBy) !== actor.id) throw new ApiError(403, "You can only publish your own exams");
+  if (actor.role !== "SUPER_ADMIN" && String(exam.createdBy) !== actor.id) throw new ApiError(403, "You can only publish your own exams");
   exam.status = "PUBLISHED";
   await exam.save();
   await audit("PUBLISH_EXAM", {
@@ -141,7 +141,7 @@ export async function publishExam(id: string, actor: { id: string; role: string 
 export async function archiveExam(id: string, actor: { id: string; role: string }): Promise<unknown> {
   const exam = await Exam.findOne({ _id: id, deletedAt: null });
   if (!exam) throw new ApiError(404, "Exam not found");
-  if (String(exam.createdBy) !== actor.id) throw new ApiError(403, "Forbidden");
+  if (actor.role !== "SUPER_ADMIN" && String(exam.createdBy) !== actor.id) throw new ApiError(403, "Forbidden");
   exam.status = "ARCHIVED";
   await exam.save();
   await audit("ARCHIVE_EXAM", { actorId: actor.id, actorRole: actor.role, entityType: "Exam", entityId: String(exam._id) });

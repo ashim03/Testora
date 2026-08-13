@@ -311,18 +311,18 @@ function MobileNav() {
   const groups = navGroupsFor(user?.role);
   const navigate = useNavigate();
   const { pathname } = useLocation();
-  const items = groups.flatMap((group) => group.items).slice(0, 5);
+  const items = groups.flatMap((group) => group.items);
 
   if (!items.length) return null;
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-40 border-t bg-card/95 px-2 pb-[calc(env(safe-area-inset-bottom)+0.35rem)] pt-1.5 shadow-[0_-10px_30px_-24px_rgb(15_23_42/0.35)] backdrop-blur lg:hidden">
-      <ul className="grid grid-cols-5 gap-1">
+      <ul className="flex gap-1 overflow-x-auto scrollbar-thin">
         {items.map((item) => {
           const current = item.end ? pathname === item.to : pathname.startsWith(item.to);
           const Icon = item.icon;
           return (
-            <li key={item.to}>
+            <li key={item.to} className="min-w-16 flex-1">
               <button
                 type="button"
                 onClick={() => navigate(item.to)}

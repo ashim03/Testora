@@ -20,6 +20,8 @@ interface AssignmentRow {
   _id: string;
   title: string;
   description: string;
+  instructions?: string;
+  submissionType?: string;
   dueAt?: string | null;
   maxMarks?: number;
   status: string;
@@ -30,6 +32,14 @@ interface AssignmentRow {
   pendingCount?: number;
   gradedCount?: number;
   createdAt: string;
+}
+
+function toDateTimeLocal(iso?: string | null): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 interface StudentRow { _id: string; firstName?: string; lastName?: string; email?: string }
@@ -300,16 +310,16 @@ function AssignmentDialog({ open, onOpenChange, editing, onSubmit, submitting, s
         <form onSubmit={onSubmit} className="space-y-4">
           <div className="space-y-1.5"><Label>Title</Label><Input name="title" required defaultValue={editing?.title ?? ""} /></div>
           <div className="space-y-1.5"><Label>Description</Label><textarea name="description" className="w-full rounded-md border px-3 py-2 text-sm" rows={2} defaultValue={editing?.description ?? ""} /></div>
-          <div className="space-y-1.5"><Label>Instructions</Label><textarea name="instructions" className="w-full rounded-md border px-3 py-2 text-sm" rows={3} /></div>
+          <div className="space-y-1.5"><Label>Instructions</Label><textarea name="instructions" className="w-full rounded-md border px-3 py-2 text-sm" rows={3} defaultValue={editing?.instructions ?? ""} /></div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5"><Label>Max marks</Label><Input name="maxMarks" type="number" defaultValue={editing?.maxMarks ?? 100} /></div>
             <div className="space-y-1.5">
               <Label>Submission type</Label>
-              <select name="submissionType" className="w-full rounded-md border px-3 py-2 text-sm" defaultValue="TEXT">
+              <select name="submissionType" className="w-full rounded-md border px-3 py-2 text-sm" defaultValue={editing?.submissionType ?? "TEXT"}>
                 {["TEXT", "FILE", "TEXT_AND_FILE", "LINK", "AUDIO_VIDEO"].map((t) => <option key={t} value={t}>{titleCase(t)}</option>)}
               </select>
             </div>
-            <div className="space-y-1.5"><Label>Due date</Label><Input name="dueAt" type="datetime-local" /></div>
+            <div className="space-y-1.5"><Label>Due date</Label><Input name="dueAt" type="datetime-local" defaultValue={toDateTimeLocal(editing?.dueAt)} /></div>
           </div>
 
           {students.length > 0 && (

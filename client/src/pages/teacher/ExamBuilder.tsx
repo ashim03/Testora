@@ -192,9 +192,13 @@ export function ExamBuilder({ examId, onDone, onCancel }: { examId?: string; onD
   }
 
   async function submit() {
+    const questionIds = sections.flatMap((s) => s.questionIds);
+    if (questionIds.length === 0) {
+      toast.error("Add at least one question before saving the exam");
+      return;
+    }
     setSaving(true);
     try {
-      const questionIds = sections.flatMap((s) => s.questionIds);
       const payload = {
         title,
         type,

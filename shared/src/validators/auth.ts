@@ -154,6 +154,13 @@ export const createCourseSchema = z.object({
   description: z.string().max(1000).optional().default(""),
 });
 
+export const updateCourseSchema = z.object({
+  name: nameField.optional(),
+  code: z.string().trim().min(1).max(40).optional(),
+  type: z.enum(["IELTS", "PTE"]).optional(),
+  description: z.string().max(1000).optional(),
+});
+
 export const createBatchSchema = z.object({
   name: nameField,
   courseId: idSchema,

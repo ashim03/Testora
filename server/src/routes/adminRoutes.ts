@@ -12,6 +12,7 @@ import {
   assignStudentSchema,
   transferStudentSchema,
   createCourseSchema,
+  updateCourseSchema,
   categorySchema,
 } from "@testora-platform/shared";
 
@@ -45,6 +46,8 @@ router.patch("/student-assignments/:id", validateRequest(transferStudentSchema a
 
 router.get("/courses", admin.myCourses);
 router.post("/courses", validateRequest(createCourseSchema as never), admin.createCourse);
+router.patch("/courses/:id", validateRequest(updateCourseSchema as never), admin.updateCourse);
+router.delete("/courses/:id", admin.deleteCourse);
 router.get("/categories", admin.listCategories);
 router.post("/categories", validateRequest(categorySchema as never), admin.createCategory);
 

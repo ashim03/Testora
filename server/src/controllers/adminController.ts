@@ -140,6 +140,16 @@ export const createCourse = asyncHandler(async (req: Request, res: Response) => 
   res.status(201).json({ success: true, message: "Course created", data });
 });
 
+export const updateCourse = asyncHandler(async (req: Request, res: Response) => {
+  const data = await courseService.updateCourse(String(req.params.id), req.body);
+  res.json({ success: true, message: "Course updated", data });
+});
+
+export const deleteCourse = asyncHandler(async (req: Request, res: Response) => {
+  const data = await courseService.deleteCourse(String(req.params.id));
+  res.json({ success: true, message: "Course deleted", data });
+});
+
 export const createCategory = asyncHandler(async (req: Request, res: Response) => {
   const data = await courseService.createCategory(req.body);
   res.status(201).json({ success: true, message: "Category created", data });

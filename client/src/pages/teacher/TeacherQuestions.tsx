@@ -15,7 +15,7 @@ import {
 import { TableToolbar, Pagination, PanelEmptyState, TableSkeleton } from "../../components/ui/table-toolbar";
 import { Spinner } from "../../components/ui/feedback";
 import { AudioUpload } from "../../components/shared/AudioUpload";
-import { getErrorMessage, formatDate, cn } from "../../utils";
+import { getErrorMessage, formatDate } from "../../utils";
 import * as shared from "@testora-platform/shared";
 
 interface QuestionRow {
@@ -252,6 +252,7 @@ function QuestionForm({ question, onDone, onCancel }: { question: QuestionDetail
   const [difficulty, setDifficulty] = useState(question?.difficulty || "MEDIUM");
   const [minWord, setMinWord] = useState("");
   const [maxWord, setMaxWord] = useState("");
+  const [busy, setBusy] = useState(false);
 
   const isChoice = CHOICE_TYPES.includes(type);
 
@@ -280,8 +281,25 @@ function QuestionForm({ question, onDone, onCancel }: { question: QuestionDetail
 
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (!title.trim()) {
+      toast.error("Question title is required");
+      return;
+    }
     const cleanOptions = isChoice ? options.map((t, i) => ({ key: String.fromCharCode(65 + i), text: t })).filter((o) => o.text) : undefined;
     const correctAnswers = isChoice ? correct : accepted.split(/\s*[|,]\s*/).map((s) => s.trim()).filter(Boolean);
+    if (isChoice) {
+      if ((cleanOptions?.length ?? 0) < 2) {
+        toast.error("Add at least two answer options");
+        return;
+      }
+      if (correct.length === 0) {
+        toast.error("Select at least one correct answer");
+        return;
+      }
+    } else if (type !== "SPEAKING" && type !== "WRITING" && correctAnswers.length === 0) {
+      toast.error("Provide at least one correct answer");
+      return;
+    }
     const payload: Record<string, unknown> = {
       category: cat,
       type,
@@ -305,6 +323,7 @@ function QuestionForm({ question, onDone, onCancel }: { question: QuestionDetail
       ...(isChoice ? { options: cleanOptions } : { acceptedAnswers: correctAnswers }),
     };
     try {
+      setBusy(true);
       if (question?._id) {
         await apiPatch(`/questions/${question._id}`, payload);
         toast.success("Question updated");
@@ -316,6 +335,8 @@ function QuestionForm({ question, onDone, onCancel }: { question: QuestionDetail
       onDone();
     } catch (err) {
       toast.error(getErrorMessage(err));
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -448,7 +469,7 @@ function QuestionForm({ question, onDone, onCancel }: { question: QuestionDetail
 
         <DialogFooter>
           <DialogClose asChild><Button type="button" variant="outline" onClick={onCancel}>Cancel</Button></DialogClose>
-          <Button type="submit"><Spinner className={cn("size-4", "hidden")} /> {question?._id ? "Save" : "Create"}</Button>
+          <Button type="submit" disabled={busy}>{busy ? <Spinner className="size-4" /> : null} {question?._id ? "Save" : "Create"}</Button>
         </DialogFooter>
       </form>
     </DialogContent>

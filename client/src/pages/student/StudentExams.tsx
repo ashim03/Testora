@@ -86,9 +86,13 @@ export function StudentExams() {
                     </TableCell>
                     <TableCell className="text-muted-foreground">{exam.endAt ? formatDate(exam.endAt) : "—"}</TableCell>
                     <TableCell className="text-right">
-                      <Button size="sm" disabled={startMutation.isPending} onClick={() => startMutation.mutate(exam._id)}>
-                        <Play className="size-4" /> {attempt?.status === "IN_PROGRESS" ? "Resume" : "Start"}
-                      </Button>
+                      {attempt && ["SUBMITTED", "UNDER_REVIEW", "GRADED", "PUBLISHED"].includes(attempt.status) ? (
+                        <Button size="sm" variant="outline" onClick={() => navigate("/student/results")}>View result</Button>
+                      ) : (
+                        <Button size="sm" disabled={startMutation.isPending} onClick={() => startMutation.mutate(exam._id)}>
+                          <Play className="size-4" /> {attempt?.status === "IN_PROGRESS" ? "Resume" : "Start"}
+                        </Button>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}

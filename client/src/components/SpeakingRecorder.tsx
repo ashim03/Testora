@@ -51,6 +51,7 @@ export function SpeakingRecorder({
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const durationRef = useRef(0);
 
   const saved = speakingAnswerValue(value);
   const playbackUrl = pendingUrl || saved.url;
@@ -86,7 +87,11 @@ export function SpeakingRecorder({
         void uploadAudio(blob, localUrl);
       };
       setDuration(0);
-      timerRef.current = setInterval(() => setDuration((d) => d + 1), 1000);
+      durationRef.current = 0;
+      timerRef.current = setInterval(() => {
+        durationRef.current += 1;
+        setDuration(durationRef.current);
+      }, 1000);
       setRecording(rec);
       rec.start();
     } catch {
@@ -100,7 +105,7 @@ export function SpeakingRecorder({
       const file = new File([blob], `speaking-${Date.now()}.webm`, { type: blob.type || "audio/webm" });
       const result = await uploadFile(file, "AUDIO");
       if (!result.url) throw new Error("Upload failed");
-      onChange({ url: result.url, assetId: result.assetId, duration, recordedAt: new Date().toISOString() }, true);
+      onChange({ url: result.url, assetId: result.assetId, duration: durationRef.current, recordedAt: new Date().toISOString() }, true);
       setPendingUrl(null);
       URL.revokeObjectURL(localUrl);
     } catch (err) {

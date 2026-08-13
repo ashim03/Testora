@@ -75,7 +75,6 @@ export async function gradeObjectiveAttempt(attemptId: string): Promise<{
   let answered = 0;
   let subjectiveCount = 0;
   for (const q of questions) {
-    const answer = answerMap.get(String(q._id));
     const isObjective = OBJECTIVE_TYPES.has(q.type);
     if (isObjective) {
       maxScore += q.marks;

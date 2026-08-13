@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { toast } from "sonner";
 import { FileText, Star, RotateCcw, Paperclip, ExternalLink } from "lucide-react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -75,8 +76,13 @@ export function AssignmentGradeDialog({ submission, onClose, onSubmit, submittin
             onSubmit={(e) => {
               e.preventDefault();
               const fd = new FormData(e.currentTarget);
+              const score = Number(fd.get("score"));
+              if (max != null && !Number.isNaN(score) && score > max) {
+                toast.error(`Score cannot exceed ${max}`);
+                return;
+              }
               onSubmit({
-                score: Number(fd.get("score")),
+                score,
                 feedback: (fd.get("feedback") as string) || undefined,
                 strengths: (fd.get("strengths") as string)?.split(",").map((s) => s.trim()).filter(Boolean) || [],
                 improvements: (fd.get("improvements") as string)?.split(",").map((s) => s.trim()).filter(Boolean) || [],
@@ -88,7 +94,7 @@ export function AssignmentGradeDialog({ submission, onClose, onSubmit, submittin
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Score</Label>
-                <Input name="score" type="number" step="0.5" required defaultValue={submission.marks ?? undefined} />
+                <Input name="score" type="number" step="0.5" min="0" max={max != null ? max : undefined} required defaultValue={submission.marks ?? undefined} />
               </div>
               <div className="space-y-1.5">
                 <Label>Max</Label>

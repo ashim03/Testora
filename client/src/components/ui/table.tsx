@@ -35,6 +35,7 @@ export const TableHead = forwardRef<HTMLTableCellElement, ThHTMLAttributes<HTMLT
   ({ className, ...props }, ref) => (
     <th
       ref={ref}
+      scope="col"
       className={cn("h-10 px-4 text-left align-middle text-xs font-semibold uppercase text-muted-foreground", className)}
       {...props}
     />
