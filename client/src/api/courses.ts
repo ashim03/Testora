@@ -140,6 +140,8 @@ export const courseApi = {
     apiDelete(`/courses/${courseId}/enrollments/${studentId}`),
   listStudentCourses: () =>
     apiGet<Array<{ course: CourseRow; enrollment: { _id: string; status: string; lastAccessedAt?: string | null }; progress: number; completedLessons: number; totalLessons: number }>>("/courses/my"),
+  setCourseActive: (courseId: string, active: boolean) =>
+    apiPatch(`/courses/${courseId}/status`, { active }),
   getStudentCourse: (courseId: string) => apiGet<CourseFull>(`/courses/${courseId}/learn`),
   markLessonComplete: (courseId: string, lessonId: string) =>
     apiPatch(`/courses/${courseId}/lessons/${lessonId}/complete`, { source: "LESSON_COMPLETED" }),
@@ -154,6 +156,7 @@ export const assignmentsApi = {
   create: (body: Record<string, unknown>) => apiPost("/exams/assignments", body),
   update: (id: string, body: Record<string, unknown>) => apiPatch(`/exams/assignments/${id}`, body),
   publish: (id: string) => apiPost(`/exams/assignments/${id}/publish`),
+  duplicate: (id: string, body?: Record<string, unknown>) => apiPost(`/exams/assignments/${id}/duplicate`, body ?? {}),
   delete: (id: string) => apiDelete(`/exams/assignments/${id}`),
   listSubmissions: (assignmentId: string, params?: Record<string, unknown>) =>
     apiGet<unknown[]>(`/exams/assignments/${assignmentId}/submissions`, params),

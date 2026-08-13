@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
   ChevronDown, ChevronRight, Plus, Trash2, BookOpen, Folder, FileText,
-  Video, Users, Megaphone, ArrowLeft, CheckCircle2,
+  Video, Users, Megaphone, ArrowLeft, CheckCircle2, Rocket, Archive,
 } from "lucide-react";
 import { courseApi, type CourseFull, type ModuleRow, type ChapterRow, type LessonRow } from "../../api/courses";
 import { Button } from "../../components/ui/button";
@@ -28,6 +28,7 @@ export function TeacherCourseDetail() {
   const [activeTab, setActiveTab] = useState<"content" | "enrollments" | "announcements">("content");
   const [editor, setEditor] = useState<{ type: EntityType; mode: "create" | "edit"; parentId?: string; item?: unknown } | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<{ type: EntityType; id: string } | null>(null);
+  const [unpublishCourse, setUnpublishCourse] = useState<string | null>(null);
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["teacher", "course", id],
@@ -67,6 +68,15 @@ export function TeacherCourseDetail() {
     onError: (err) => toast.error(getErrorMessage(err)),
   });
 
+  const statusMutation = useMutation({
+    mutationFn: ({ courseId, active }: { courseId: string; active: boolean }) => courseApi.setCourseActive(courseId, active),
+    onSuccess: (_d, vars) => {
+      toast.success(vars.active ? "Course published" : "Course unpublished");
+      invalidate();
+    },
+    onError: (err) => toast.error(getErrorMessage(err)),
+  });
+
   if (isLoading) return <PageSpinner />;
   if (isError || !data) return <ErrorState message={error instanceof Error ? error.message : "Failed to load course"} />;
 
@@ -97,7 +107,15 @@ export function TeacherCourseDetail() {
             <p className="text-sm text-muted-foreground">{course.code} · {course.type} · {lessonCount} lessons</p>
           </div>
         </div>
-        <Badge variant={course.active === false ? "destructive" : "success"}>{course.active === false ? "Inactive" : "Active"}</Badge>
+        <div className="flex items-center gap-2">
+          <Badge variant={course.active === false ? "destructive" : "success"}>{course.active === false ? "Unpublished" : "Active"}</Badge>
+          <Button variant="outline" size="sm" className="h-7 gap-1 text-xs" disabled={statusMutation.isPending} onClick={() => {
+            if (course.active === false) statusMutation.mutate({ courseId: id, active: true });
+            else setUnpublishCourse(course.name);
+          }}>
+            {course.active === false ? <><Rocket className="size-3.5" /> Publish</> : <><Archive className="size-3.5" /> Unpublish</>}
+          </Button>
+        </div>
       </div>
 
       <div className="flex gap-1 border-b">
@@ -136,6 +154,20 @@ export function TeacherCourseDetail() {
         onConfirm={() => {
           if (deleteTarget) deleteMutation.mutate(deleteTarget);
           setDeleteTarget(null);
+        }}
+      />
+
+      <ConfirmDialog
+        open={!!unpublishCourse}
+        onOpenChange={(o) => { if (!o) setUnpublishCourse(null); }}
+        title="Unpublish course?"
+        description={`"${unpublishCourse}" will be hidden from enrolled students until you publish it again. Content and enrollments are preserved.`}
+        confirmLabel="Unpublish"
+        destructive
+        loading={statusMutation.isPending}
+        onConfirm={() => {
+          if (unpublishCourse) statusMutation.mutate({ courseId: id, active: false });
+          setUnpublishCourse(null);
         }}
       />
     </div>

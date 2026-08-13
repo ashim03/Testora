@@ -124,6 +124,12 @@ export const publishAssignment = asyncHandler(async (req: Request, res: Response
   res.json({ success: true, message: "Assignment published", data });
 });
 
+export const duplicateAssignment = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.user) throw new ApiError(401, "Authentication required");
+  const data = await assignmentService.duplicateAssignment(String(req.params.id), req.user, req.body);
+  res.status(201).json({ success: true, message: "Assignment duplicated", data });
+});
+
 export const listAssignmentSubmissions = asyncHandler(async (req: Request, res: Response) => {
   if (!req.user) throw new ApiError(401, "Authentication required");
   const assignmentId = (req.params.assignmentId as string | undefined) || "";

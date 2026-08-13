@@ -67,6 +67,29 @@ async function assertCanViewCourse(courseId: string, actorId: string): Promise<v
   throw new ApiError(403, "You are not authorized to view this course");
 }
 
+export async function setCourseActive(courseId: string, active: boolean, actor: { id: string; role: string }): Promise<unknown> {
+  await assertCanManageCourse(courseId, actor.id, actor.role);
+  const course = await Course.findById(courseId);
+  if (!course) throw new ApiError(404, "Course not found");
+  if (course.active === active) return course;
+  course.active = active;
+  await course.save();
+  if (active) {
+    const enrollments = await CourseEnrollment.find({ courseId, status: "ACTIVE" }).select("studentId").lean();
+    for (const e of enrollments) {
+      await notify(String(e.studentId), "COURSE_PUBLISHED", "Course available", `"${course.name}" is now available.`, { courseId });
+    }
+  }
+  await audit("COURSE_STATUS_CHANGE", {
+    actorId: actor.id,
+    actorRole: actor.role,
+    entityType: "Course",
+    entityId: courseId,
+    after: { active },
+  });
+  return course;
+}
+
 export async function getCourseFull(courseId: string, role: string, actorId: string): Promise<unknown> {
   if (role !== "SUPER_ADMIN" && role !== "STUDENT") {
     await assertCanViewCourse(courseId, actorId);
@@ -82,6 +105,7 @@ export async function getCourseFull(courseId: string, role: string, actorId: str
   const announcements = await CourseAnnouncement.find({ courseId }).sort({ pinned: -1, createdAt: -1 }).lean();
 
   const isStudent = role === "STUDENT";
+  if (isStudent && course.active === false) throw new ApiError(403, "This course is not currently available");
   const visibleLessons = isStudent ? lessons.filter((l) => l.published) : lessons;
   const visibleMaterials = isStudent ? materials.filter((m) => m.published) : materials;
 
@@ -304,9 +328,9 @@ export async function enrollStudents(courseId: string, options: { studentIds?: s
         existing.status = "ACTIVE";
         await existing.save();
       }
-    } else {
-      await CourseEnrollment.create({ courseId, studentId, enrolledBy: actor.id, teacherId: actor.role === "TEACHER" ? actor.id : null, totalLessonCount: lessons });
+      continue;
     }
+    await CourseEnrollment.create({ courseId, studentId, enrolledBy: actor.id, teacherId: actor.role === "TEACHER" ? actor.id : null, totalLessonCount: lessons });
     await notify(studentId, "COURSE_ENROLLED", "Course enrollment", `You have been enrolled in "${course.name}".`, { courseId });
   }
   await audit("ENROLL_STUDENTS", { actorId: actor.id, actorRole: actor.role, entityType: "Course", entityId: courseId, after: { studentCount: students.size } });
@@ -334,8 +358,9 @@ export async function listStudentCourses(studentId: string): Promise<unknown[]> 
   const enrollments = await CourseEnrollment.find({ studentId, status: "ACTIVE" }).sort({ lastAccessedAt: -1, createdAt: -1 }).populate("courseId").lean();
   const courses = [];
   for (const e of enrollments) {
-    const course = (e.courseId as unknown as { _id: Types.ObjectId; name: string; code: string; type: string; description: string; thumbnailUrl: string | null; level: string }) || null;
+    const course = (e.courseId as unknown as { _id: Types.ObjectId; name: string; code: string; type: string; description: string; thumbnailUrl: string | null; level: string; active: boolean }) || null;
     if (!course || course._id == null) continue;
+    if (course.active === false) continue;
     const courseObjectId = e.courseId as unknown as Types.ObjectId;
     const total = await Lesson.countDocuments({ courseId: courseObjectId, published: true });
     const completed = await LessonProgress.countDocuments({ courseId: courseObjectId, studentId, status: "COMPLETED" });

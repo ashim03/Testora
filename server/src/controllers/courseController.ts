@@ -149,6 +149,12 @@ export const listMyCoursesStudent = asyncHandler(async (req: Request, res: Respo
   res.json({ success: true, message: "My courses", data });
 });
 
+export const setCourseActive = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.user) throw new ApiError(401, "Authentication required");
+  const data = await courseContent.setCourseActive(String(req.params.courseId), Boolean(req.body.active), { id: req.user.id, role: req.user.role }) as { active: boolean };
+  res.json({ success: true, message: data.active ? "Course published" : "Course unpublished", data });
+});
+
 export const getStudentCourse = asyncHandler(async (req: Request, res: Response) => {
   if (!req.user) throw new ApiError(401, "Authentication required");
   const data = await courseContent.getStudentCourseContent(String(req.params.courseId), req.user.id);

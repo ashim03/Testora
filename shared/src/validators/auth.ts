@@ -161,6 +161,10 @@ export const updateCourseSchema = z.object({
   description: z.string().max(1000).optional(),
 });
 
+export const updateCourseStatusSchema = z.object({
+  active: z.boolean(),
+});
+
 export const createBatchSchema = z.object({
   name: nameField,
   courseId: idSchema,

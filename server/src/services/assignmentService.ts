@@ -24,7 +24,7 @@ export async function createAssignment(
     if (batch) batch.studentIds.forEach((s) => studentIds.add(String(s)));
   }
   assignment.studentIds = [...studentIds] as unknown as Types.ObjectId[];
-  assignment.status = "ASSIGNED";
+  assignment.status = "DRAFT";
   await assignment.save();
   await audit("CREATE_ASSIGNMENT", {
     actorId: actor.id,
@@ -34,12 +34,6 @@ export async function createAssignment(
     after: { title: assignment.title },
   });
   await logActivity(actor.id, "CREATE_ASSIGNMENT", "Assignment", assignment._id, { title: assignment.title }, ip);
-  for (const sid of studentIds) {
-    await notify(sid, "ASSIGNMENT_CREATED", "New assignment", `A new assignment "${assignment.title}" has been published.`, {
-      assignmentId: String(assignment._id),
-      dueAt: assignment.dueAt,
-    });
-  }
   return assignment;
 }
 
@@ -134,6 +128,50 @@ export async function deleteAssignment(id: string, actor: { id: string; role: st
     entityType: "Assignment",
     entityId: String(assignment._id),
   });
+}
+
+export async function duplicateAssignment(id: string, actor: { id: string; role: string }, overrides: Record<string, unknown> = {}): Promise<unknown> {
+  const source = await Assignment.findOne({ _id: id, deletedAt: null });
+  if (!source) throw new ApiError(404, "Assignment not found");
+  if (String(source.createdBy) !== actor.id) throw new ApiError(403, "Forbidden");
+  const copyData: Record<string, unknown> = {
+    title: `${source.title} (copy)`,
+    description: source.description,
+    instructions: source.instructions,
+    examId: source.examId,
+    questionIds: source.questionIds,
+    studentIds: source.studentIds,
+    batchIds: source.batchIds,
+    dueAt: source.dueAt,
+    maxMarks: source.maxMarks,
+    attachments: source.attachments,
+    courseId: source.courseId,
+    moduleId: source.moduleId,
+    chapterId: source.chapterId,
+    lessonId: source.lessonId,
+    submissionType: source.submissionType,
+    allowedFileTypes: source.allowedFileTypes,
+    requiresAttachment: source.requiresAttachment,
+    allowResubmission: source.allowResubmission,
+    ...overrides,
+  };
+  const copy = await Assignment.create({ ...copyData, createdBy: actor.id, published: false, status: "DRAFT", deletedAt: null });
+  const studentIds = new Set<string>();
+  for (const sid of (copyData.studentIds as string[]) || []) studentIds.add(String(sid));
+  for (const batchId of (copyData.batchIds as string[]) || []) {
+    const batch = await Batch.findById(batchId);
+    if (batch) batch.studentIds.forEach((s) => studentIds.add(String(s)));
+  }
+  copy.studentIds = [...studentIds] as unknown as Types.ObjectId[];
+  await copy.save();
+  await audit("DUPLICATE_ASSIGNMENT", {
+    actorId: actor.id,
+    actorRole: actor.role,
+    entityType: "Assignment",
+    entityId: String(copy._id),
+    after: { title: copy.title, sourceId: id },
+  });
+  return copy;
 }
 
 export async function publishAssignment(id: string, actor: { id: string; role: string }): Promise<unknown> {

@@ -1,6 +1,8 @@
 import { Router } from "express";
 import * as courses from "../controllers/courseController";
 import { authenticate, authorize } from "../middleware/auth";
+import { validateRequest } from "../middleware/error";
+import { updateCourseStatusSchema } from "@testora-platform/shared";
 
 const router = Router();
 router.use(authenticate);
@@ -13,6 +15,7 @@ router.post("/:courseId/materials/:materialId/view", authorize("STUDENT"), cours
 router.get("/teacher/my", authorize("TEACHER", "SUPER_ADMIN"), courses.listMyCourses);
 router.get("/:courseId/outline", authorize("TEACHER", "SUPER_ADMIN"), courses.getCourseOutline);
 router.get("/:courseId", authorize("TEACHER", "SUPER_ADMIN"), courses.getCourse);
+router.patch("/:courseId/status", authorize("TEACHER", "SUPER_ADMIN"), validateRequest(updateCourseStatusSchema as never), courses.setCourseActive);
 router.post("/:courseId/modules", authorize("TEACHER", "SUPER_ADMIN"), courses.createModule);
 router.patch("/modules/:moduleId", authorize("TEACHER", "SUPER_ADMIN"), courses.updateModule);
 router.delete("/modules/:moduleId", authorize("TEACHER", "SUPER_ADMIN"), courses.deleteModule);

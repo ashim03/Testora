@@ -130,6 +130,10 @@ export const updateAssignmentSchema = z.object({
   status: z.enum(["DRAFT", "ASSIGNED", "OPEN", "CLOSED"]).optional(),
 });
 
+export const duplicateAssignmentSchema = z.object({
+  title: z.string().trim().min(3).max(200).optional(),
+});
+
 export const gradeAssignmentSchema = z.object({
   score: z.number().nonnegative().max(1000).optional(),
   feedback: z.string().max(4000).optional(),

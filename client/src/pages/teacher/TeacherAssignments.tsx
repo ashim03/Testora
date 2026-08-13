@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Send, Users, Paperclip, RotateCcw, ClipboardPen } from "lucide-react";
+import { Plus, Pencil, Trash2, Send, Users, Paperclip, RotateCcw, ClipboardPen, Copy } from "lucide-react";
 import { assignmentsApi } from "../../api/courses";
 import { apiGet } from "../../api/client";
 import { Button } from "../../components/ui/button";
@@ -105,6 +105,12 @@ export function TeacherAssignments() {
     onError: (err) => toast.error(getErrorMessage(err)),
   });
 
+  const duplicateMutation = useMutation({
+    mutationFn: (id: string) => assignmentsApi.duplicate(id),
+    onSuccess: () => { toast.success("Assignment duplicated as draft"); qc.invalidateQueries({ queryKey: ["teacher", "assignments"] }); },
+    onError: (err) => toast.error(getErrorMessage(err)),
+  });
+
   const deleteMutation = useMutation({
     mutationFn: (id: string) => assignmentsApi.delete(id),
     onSuccess: () => { toast.success("Assignment deleted"); qc.invalidateQueries({ queryKey: ["teacher", "assignments"] }); },
@@ -201,6 +207,7 @@ export function TeacherAssignments() {
                             {!row.published && (
                               <Button variant="ghost" size="icon" className="size-7" title="Publish" onClick={() => publishMutation.mutate(row._id)}><Send className="size-3.5 text-emerald-600" /></Button>
                             )}
+                            <Button variant="ghost" size="icon" className="size-7" title="Duplicate" onClick={() => duplicateMutation.mutate(row._id)}><Copy className="size-3.5" /></Button>
                             <Button variant="ghost" size="icon" className="size-7" title="Delete" onClick={() => setDeleteId(row)}><Trash2 className="size-3.5" /></Button>
                           </div>
                         </TableCell>
