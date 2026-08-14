@@ -1,7 +1,7 @@
 ﻿import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Plus, Trash2, Pencil } from "lucide-react";
+import { Plus, Trash2, Pencil, Trash, Copy } from "lucide-react";
 import { apiGet, apiPost, apiPatch, apiDelete } from "../../api/client";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
@@ -83,6 +83,12 @@ export function TeacherQuestions() {
   const [formOpen, setFormOpen] = useState(false);
   const [deleteQuestion, setDeleteQuestion] = useState<{ _id: string; title: string } | null>(null);
   const [editing, setEditing] = useState<QuestionDetail | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+
+  useEffect(() => {
+    setSelected(new Set());
+  }, [page, search, fCategory, fType, fDifficulty]);
 
   const listQuery = useQuery({
     queryKey: ["teacher", "questions", { page, search, fCategory, fType, fDifficulty }],
@@ -97,6 +103,46 @@ export function TeacherQuestions() {
     onSuccess: () => { toast.success("Deleted"); qc.invalidateQueries({ queryKey: ["teacher", "questions"] }); },
     onError: (err) => toast.error(getErrorMessage(err)),
   });
+
+  const bulkDeleteMutation = useMutation({
+    mutationFn: async (ids: string[]) => apiPost("/questions/bulk-delete", { ids }),
+    onSuccess: (_d, ids) => {
+      toast.success(`${ids.length} question${ids.length === 1 ? "" : "s"} deleted`);
+      setSelected(new Set());
+      setBulkDeleteOpen(false);
+      qc.invalidateQueries({ queryKey: ["teacher", "questions"] });
+    },
+    onError: (err) => toast.error(getErrorMessage(err)),
+  });
+
+  const duplicateMutation = useMutation({
+    mutationFn: async (id: string) => apiPost(`/questions/${id}/duplicate`),
+    onSuccess: () => { toast.success("Question duplicated"); qc.invalidateQueries({ queryKey: ["teacher", "questions"] }); },
+    onError: (err) => toast.error(getErrorMessage(err)),
+  });
+
+  const pageIds = listQuery.data?.data?.map((q) => q._id) ?? [];
+
+  function toggleSelect(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleSelectPage() {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      const allSelected = pageIds.length > 0 && pageIds.every((id) => next.has(id));
+      for (const id of pageIds) {
+        if (allSelected) next.delete(id);
+        else next.add(id);
+      }
+      return next;
+    });
+  }
 
   const questions = listQuery.data?.data ?? [];
   const pagination = listQuery.data?.pagination;
@@ -175,6 +221,15 @@ export function TeacherQuestions() {
               <TableToolbar searchPlaceholder="Search questions..." search={search} onSearchChange={(v) => { setSearch(v); setPage(1); }} />
             </div>
           </div>
+          {selected.size > 0 && (
+            <div className="flex items-center justify-between gap-3 border-t bg-muted/40 px-4 py-2">
+              <span className="text-sm text-muted-foreground">{selected.size} selected</span>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setSelected(new Set())}>Clear</Button>
+                <Button variant="destructive" size="sm" className="h-7 gap-1 text-xs" onClick={() => setBulkDeleteOpen(true)}><Trash className="size-3.5" /> Delete selected</Button>
+              </div>
+            </div>
+          )}
           {listQuery.isLoading ? (
             <TableSkeleton rows={6} />
           ) : questions.length === 0 ? (
@@ -183,6 +238,15 @@ export function TeacherQuestions() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-10">
+                    <input
+                      type="checkbox"
+                      className="accent-brand-600"
+                      checked={pageIds.length > 0 && pageIds.every((id) => selected.has(id))}
+                      onChange={toggleSelectPage}
+                      aria-label="Select all questions on this page"
+                    />
+                  </TableHead>
                   <TableHead>Title</TableHead>
                   <TableHead>Category</TableHead>
                   <TableHead>Type</TableHead>
@@ -194,7 +258,10 @@ export function TeacherQuestions() {
               </TableHeader>
               <TableBody>
                 {questions.map((q) => (
-                  <TableRow key={q._id}>
+                  <TableRow key={q._id} className={selected.has(q._id) ? "bg-primary/5" : ""}>
+                    <TableCell>
+                      <input type="checkbox" className="accent-brand-600" checked={selected.has(q._id)} onChange={() => toggleSelect(q._id)} aria-label={`Select ${q.title}`} />
+                    </TableCell>
                     <TableCell className="max-w-xs truncate font-medium">{q.title}</TableCell>
                     <TableCell>{q.category}</TableCell>
                     <TableCell><Badge variant="outline">{q.type}</Badge></TableCell>
@@ -204,6 +271,7 @@ export function TeacherQuestions() {
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
                         <Button variant="ghost" size="icon" onClick={() => openEdit(q._id)} title="Edit"><Pencil className="size-4" /></Button>
+                        <Button variant="ghost" size="icon" onClick={() => duplicateMutation.mutate(q._id)} title="Duplicate"><Copy className="size-4" /></Button>
                         <Button variant="ghost" size="icon" onClick={() => setDeleteQuestion(q)} title="Delete"><Trash2 className="size-4" /></Button>
                       </div>
                     </TableCell>
@@ -239,6 +307,19 @@ export function TeacherQuestions() {
         onConfirm={() => {
           if (deleteQuestion) deleteMutation.mutate(deleteQuestion._id);
           setDeleteQuestion(null);
+        }}
+      />
+
+      <ConfirmDialog
+        open={bulkDeleteOpen}
+        onOpenChange={setBulkDeleteOpen}
+        title="Delete selected questions?"
+        description={`${selected.size} question${selected.size === 1 ? "" : "s"} will be permanently removed from your question bank. Questions referenced by published exams remain in those exams.`}
+        confirmLabel={`Delete ${selected.size}`}
+        destructive
+        loading={bulkDeleteMutation.isPending}
+        onConfirm={() => {
+          if (selected.size > 0) bulkDeleteMutation.mutate([...selected]);
         }}
       />
     </div>

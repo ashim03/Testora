@@ -82,15 +82,35 @@ export async function sendMessage(actor: Actor, recipientId: string, body: strin
     body: text,
   });
 
-  await notify(
-    recipientId,
-    "CHAT_MESSAGE",
-    "New message",
-    "You have a new chat message.",
-    { senderId: actor.id },
-  );
+  await notifyChat(recipientId, actor.id);
 
   return formatMessage(message);
+}
+
+const CHAT_NOTIFY_WINDOW_MS = 5 * 60 * 1000;
+
+async function notifyChat(recipientId: string, senderId: string): Promise<void> {
+  const since = new Date(Date.now() - CHAT_NOTIFY_WINDOW_MS);
+  try {
+    const existing = await Notification.findOne({
+      recipientId,
+      type: "CHAT_MESSAGE",
+      read: false,
+      "data.senderId": senderId,
+      createdAt: { $gte: since },
+    });
+    if (existing) {
+      const count = (existing.data?.count as number) || 1;
+      existing.data = { ...(existing.data ?? {}), senderId, count: count + 1 };
+      existing.title = "New messages";
+      existing.body = `${count + 1} unread message${count + 1 === 1 ? "" : "s"} from the conversation.`;
+      await existing.save();
+      return;
+    }
+    await notify(recipientId, "CHAT_MESSAGE", "New message", "You have a new chat message.", { senderId });
+  } catch (error) {
+    console.error("[notification] chat failed", error);
+  }
 }
 
 export async function markConversationRead(actor: Actor, contactId: string): Promise<void> {

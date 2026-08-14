@@ -11,6 +11,7 @@ import { Input } from "../../components/ui/input";
 import { ErrorState, EmptyState } from "../../components/ui/feedback";
 import { TableSkeleton } from "../../components/ui/table-toolbar";
 import { ConfirmDialog } from "../../components/ui/confirm-dialog";
+import { Breadcrumbs } from "../../components/ui/breadcrumbs";
 import { getErrorMessage } from "../../utils";
 
 export function TeacherCourses() {
@@ -44,6 +45,7 @@ export function TeacherCourses() {
 
   return (
     <div className="space-y-6">
+      <Breadcrumbs items={[{ label: "Dashboard", href: "/teacher" }, { label: "My courses" }]} />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">My courses</h1>

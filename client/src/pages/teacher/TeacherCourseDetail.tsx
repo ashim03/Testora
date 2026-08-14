@@ -15,6 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/ca
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "../../components/ui/dialog";
 import { ErrorState, PageSpinner, EmptyState } from "../../components/ui/feedback";
 import { ConfirmDialog } from "../../components/ui/confirm-dialog";
+import { Breadcrumbs } from "../../components/ui/breadcrumbs";
 import { getErrorMessage } from "../../utils";
 
 type EntityType = "module" | "chapter" | "lesson" | "material";
@@ -99,6 +100,7 @@ export function TeacherCourseDetail() {
 
   return (
     <div className="space-y-6">
+      <Breadcrumbs items={[{ label: "Dashboard", href: "/teacher" }, { label: "My courses", href: "/teacher/courses" }, { label: course.name }]} />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" onClick={() => navigate("/teacher/courses")}><ArrowLeft className="size-4" /></Button>

@@ -78,6 +78,10 @@ export const createQuestionSchema = z.object({
 
 export const updateQuestionSchema = createQuestionSchema.partial();
 
+export const bulkDeleteQuestionsSchema = z.object({
+  ids: z.array(z.string().regex(/^[0-9a-fA-F]{24}$/, "Invalid id")).min(1, "At least one question is required").max(100),
+});
+
 export const createPassageSchema = z.object({
   title: z.string().trim().min(3).max(300),
   content: z.string().min(10).max(60000),

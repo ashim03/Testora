@@ -30,6 +30,12 @@ export const deleteQuestion = asyncHandler(async (req: Request, res: Response) =
   res.json({ success: true, message: "Question deleted" });
 });
 
+export const bulkDeleteQuestions = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.user) throw new ApiError(401, "Authentication required");
+  const deleted = await questionService.bulkDeleteQuestions((req.body.ids as string[]) || [], req.user);
+  res.json({ success: true, message: `${deleted} question${deleted === 1 ? "" : "s"} deleted`, data: { deleted } });
+});
+
 export const duplicateQuestion = asyncHandler(async (req: Request, res: Response) => {
   if (!req.user) throw new ApiError(401, "Authentication required");
   const data = await questionService.duplicateQuestion(String(req.params.id), req.user);

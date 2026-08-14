@@ -102,6 +102,17 @@ export async function deleteQuestion(id: string, actor: { id: string; role: stri
   await question.save();
 }
 
+export async function bulkDeleteQuestions(ids: string[], actor: { id: string; role: string }): Promise<number> {
+  const questions = await Question.find({ _id: { $in: ids }, deletedAt: null });
+  const deletable = questions.filter((q) => actor.role === "SUPER_ADMIN" || String(q.createdBy) === actor.id);
+  if (deletable.length === 0) return 0;
+  const res = await Question.updateMany(
+    { _id: { $in: deletable.map((q) => q._id) } },
+    { $set: { deletedAt: new Date() } },
+  );
+  return res.modifiedCount ?? deletable.length;
+}
+
 export async function duplicateQuestion(id: string, actor: { id: string; role: string }): Promise<unknown> {
   const question = await Question.findOne({ _id: id, deletedAt: null });
   if (!question) throw new ApiError(404, "Question not found");
