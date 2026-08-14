@@ -14,6 +14,11 @@ import {
   createCourseSchema,
   updateCourseSchema,
   categorySchema,
+  createConsultancySchema,
+  updateConsultancySchema,
+  createSubscriptionPackageSchema,
+  updateSubscriptionPackageSchema,
+  assignPackageSchema,
 } from "@testora-platform/shared";
 
 const statusSchema = z.object({ status: z.enum(["ACTIVE", "INACTIVE", "SUSPENDED"]) });
@@ -54,5 +59,19 @@ router.post("/categories", validateRequest(categorySchema as never), admin.creat
 router.get("/batches", admin.listBatches);
 router.get("/audit-logs", admin.listAuditLogs);
 router.get("/reports", admin.reports);
+
+router.get("/consultancies", admin.listConsultancies);
+router.post("/consultancies", validateRequest(createConsultancySchema as never), admin.createConsultancy);
+router.get("/consultancies/:id", admin.getConsultancy);
+router.patch("/consultancies/:id", validateRequest(updateConsultancySchema as never), admin.updateConsultancy);
+router.patch("/consultancies/:id/status", validateRequest(statusSchema as never), admin.setConsultancyStatus);
+router.post("/consultancies/:id/assign-package", validateRequest(assignPackageSchema as never), admin.assignPackage);
+router.delete("/consultancies/:id", admin.deleteConsultancy);
+
+router.get("/subscription-packages", admin.listSubscriptionPackages);
+router.post("/subscription-packages", validateRequest(createSubscriptionPackageSchema as never), admin.createSubscriptionPackage);
+router.patch("/subscription-packages/:id", validateRequest(updateSubscriptionPackageSchema as never), admin.updateSubscriptionPackage);
+router.delete("/subscription-packages/:id", admin.deleteSubscriptionPackage);
+router.get("/subscriptions", admin.listSubscriptions);
 
 export default router;

@@ -7,6 +7,7 @@ import morgan from "morgan";
 import { config } from "./config";
 import authRoutes from "./routes/authRoutes";
 import adminRoutes from "./routes/adminRoutes";
+import consultancyRoutes from "./routes/consultancyRoutes";
 import teacherRoutes from "./routes/teacherRoutes";
 import questionRoutes from "./routes/questionRoutes";
 import examRoutes from "./routes/examRoutes";
@@ -62,6 +63,7 @@ export function createApp(options: CreateAppOptions = {}): Application {
   });
   api.use("/auth", authRoutes);
   api.use("/admin", adminRoutes);
+  api.use("/consultancy", consultancyRoutes);
   api.use("/teacher", teacherRoutes);
   api.use("/questions", questionRoutes);
   api.use("/exams", examRoutes);

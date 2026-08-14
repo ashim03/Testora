@@ -10,7 +10,7 @@ import { hashPassword } from "../utils/tokens";
 import { ApiError, parseSort } from "../utils/helpers";
 import { logActivity, audit, notify } from "./notificationService";
 
-type Role = "SUPER_ADMIN" | "TEACHER" | "STUDENT";
+type Role = "SUPER_ADMIN" | "CONSULTANCY" | "TEACHER" | "STUDENT";
 type Status = "ACTIVE" | "INACTIVE" | "SUSPENDED";
 
 export interface CreateUserData {
@@ -23,6 +23,7 @@ export interface CreateUserData {
   teacherId?: string | null;
   batchId?: string | null;
   qualification?: string;
+  consultancyId?: string | null;
 }
 
 export interface UpdateUserData {
@@ -48,6 +49,7 @@ export interface ListQuery {
   sort?: string;
   status?: string;
   teacherId?: string;
+  consultancyId?: string;
 }
 
 export const isTeacherOfStudent = async (teacherId: string, studentId: string): Promise<boolean> => {
@@ -87,6 +89,7 @@ export async function createUser(
     passwordHash,
     status: "ACTIVE",
     createdBy: actor.id,
+    consultancyId: data.consultancyId ? new Types.ObjectId(data.consultancyId) : null,
   });
   if (data.role === "TEACHER") {
     await TeacherProfile.create({ userId: user._id, qualification: data.qualification || "" });
@@ -136,6 +139,7 @@ export async function listUsers(
   const limit = Number(query.limit || 10);
   const filter: Record<string, unknown> = { role, deletedAt: null };
   if (query.status) filter.status = query.status;
+  if (query.consultancyId) filter.consultancyId = new Types.ObjectId(query.consultancyId);
   if (role === "STUDENT" && scope?.teacherId) {
     const ids = await studentIdsOfTeacher(scope.teacherId);
     filter._id = { $in: ids };

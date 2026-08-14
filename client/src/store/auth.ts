@@ -6,7 +6,7 @@ export interface AuthUser {
   firstName: string;
   lastName: string;
   email: string;
-  role: "SUPER_ADMIN" | "TEACHER" | "STUDENT";
+  role: "SUPER_ADMIN" | "CONSULTANCY" | "TEACHER" | "STUDENT";
   status: string;
   avatarUrl?: string | null;
 }

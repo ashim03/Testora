@@ -12,6 +12,7 @@ declare global {
         id: string;
         role: string;
         status: string;
+        consultancyId?: string;
       };
     }
   }
@@ -21,6 +22,7 @@ export interface AuthUser {
   id: string;
   role: string;
   status: string;
+  consultancyId?: string;
 }
 
 export const authenticate = async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
@@ -38,7 +40,7 @@ export const authenticate = async (req: Request, _res: Response, next: NextFunct
       if (e?.name === "TokenExpiredError") throw new ApiError(401, "Token expired");
       throw new ApiError(401, "Invalid token");
     }
-    const user = await User.findById(payload.sub).select("role status").lean();
+    const user = await User.findById(payload.sub).select("role status consultancyId").lean();
     if (!user || user.deletedAt) {
       throw new ApiError(401, "Account no longer exists");
     }
@@ -48,7 +50,12 @@ export const authenticate = async (req: Request, _res: Response, next: NextFunct
     if (user.status === "INACTIVE") {
       throw new ApiError(403, "Account is inactive");
     }
-    req.user = { id: String(user._id), role: user.role, status: user.status };
+    req.user = {
+      id: String(user._id),
+      role: user.role,
+      status: user.status,
+      consultancyId: user.consultancyId ? String(user.consultancyId) : undefined,
+    };
     next();
   } catch (err) {
     next(err);

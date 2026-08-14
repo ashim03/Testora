@@ -2,12 +2,14 @@ import type { QuestionCategory } from "../types";
 
 export const ROLES = {
   SUPER_ADMIN: "SUPER_ADMIN",
+  CONSULTANCY: "CONSULTANCY",
   TEACHER: "TEACHER",
   STUDENT: "STUDENT",
 } as const;
 
 export const ROLE_LABELS: Record<string, string> = {
   SUPER_ADMIN: "Super Admin",
+  CONSULTANCY: "Consultancy",
   TEACHER: "Teacher",
   STUDENT: "Student",
 };
@@ -47,6 +49,19 @@ export const PERMISSIONS: Record<UserRoleLiteral, Permission[]> = {
     "settings.manage",
     "progress.view",
   ],
+  CONSULTANCY: [
+    "teacher.manage",
+    "student.manage",
+    "assignment.manage",
+    "course.manage",
+    "batch.manage",
+    "question.manage",
+    "exam.manage",
+    "submission.grade",
+    "result.manage",
+    "report.view",
+    "progress.view",
+  ],
   TEACHER: [
     "student.manage",
     "batch.manage",
@@ -60,7 +75,7 @@ export const PERMISSIONS: Record<UserRoleLiteral, Permission[]> = {
   STUDENT: ["exam.attempt", "progress.view"],
 };
 
-type UserRoleLiteral = "SUPER_ADMIN" | "TEACHER" | "STUDENT";
+type UserRoleLiteral = "SUPER_ADMIN" | "CONSULTANCY" | "TEACHER" | "STUDENT";
 
 export const QUESTION_TYPES = [
   "SINGLE_CHOICE",
@@ -255,3 +270,20 @@ export const SUBSCRIPTION_PLAN_KEYS = SUBSCRIPTION_PLANS.map((p) => p.key) as Su
 
 export const SUBSCRIPTION_STATUSES = ["ACTIVE", "EXPIRED", "CANCELLED"] as const;
 export type SubscriptionStatus = (typeof SUBSCRIPTION_STATUSES)[number];
+
+export const CURRENCY = "NPR";
+
+export const DEFAULT_SUBSCRIPTION_PACKAGES = [
+  { key: "BASIC_25", label: "Basic 25", studentLimit: 25, teacherLimit: 5, days: 30, price: 10000 },
+  { key: "STANDARD_50", label: "Standard 50", studentLimit: 50, teacherLimit: 10, days: 30, price: 18000 },
+  { key: "PRO_100", label: "Pro 100", studentLimit: 100, teacherLimit: 20, days: 30, price: 32000 },
+  { key: "ENTERPRISE_250", label: "Enterprise 250", studentLimit: 250, teacherLimit: 40, days: 30, price: 70000 },
+] as const;
+
+export type SubscriptionPackageKey = (typeof DEFAULT_SUBSCRIPTION_PACKAGES)[number]["key"];
+
+export const CONSULTANCY_STATUSES = ["ACTIVE", "INACTIVE", "SUSPENDED"] as const;
+export type ConsultancyStatus = (typeof CONSULTANCY_STATUSES)[number];
+
+export const CONSULTANCY_SUBSCRIPTION_STATUSES = ["ACTIVE", "EXPIRED", "CANCELLED", "TRIAL"] as const;
+export type ConsultancySubscriptionStatus = (typeof CONSULTANCY_SUBSCRIPTION_STATUSES)[number];

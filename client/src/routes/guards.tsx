@@ -23,7 +23,8 @@ export function RequireRole({ roles, children }: { roles: string[]; children: Re
 export function GuestOnly({ children }: { children: React.ReactNode }) {
   const user = useAuthStore((s) => s.user);
   if (user) {
-    const home = user.role === "SUPER_ADMIN" ? "/admin" : user.role === "TEACHER" ? "/teacher" : "/student";
+    const home =
+      user.role === "SUPER_ADMIN" ? "/admin" : user.role === "CONSULTANCY" ? "/consultancy" : user.role === "TEACHER" ? "/teacher" : "/student";
     return <Navigate to={home} replace />;
   }
   return <>{children}</>;

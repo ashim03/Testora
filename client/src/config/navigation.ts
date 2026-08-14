@@ -2,12 +2,10 @@ import {
   LayoutDashboard,
   Users,
   UserCog,
-  Link2,
   BookOpen,
   Layers,
   FolderOpen,
   FileText,
-  Inbox,
   Award,
   BarChart3,
   ScrollText,
@@ -20,6 +18,8 @@ import {
   ClipboardList,
   PenLine,
   CreditCard,
+  Building2,
+  Receipt,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -38,22 +38,19 @@ export interface NavGroup {
 const adminNav: NavGroup[] = [
   { label: "Overview", items: [{ label: "Dashboard", to: "/admin", icon: LayoutDashboard, end: true }] },
   {
-    label: "Management",
+    label: "Business",
     items: [
-      { label: "Teachers", to: "/admin/teachers", icon: Users },
-      { label: "Students", to: "/admin/students", icon: UserCog },
-      { label: "Assignments", to: "/admin/assignments", icon: Link2 },
-      { label: "Courses", to: "/admin/courses", icon: BookOpen },
-      { label: "Batches", to: "/admin/batches", icon: Layers },
+      { label: "Consultancies", to: "/admin/consultancies", icon: Building2 },
+      { label: "Subscription packages", to: "/admin/packages", icon: CreditCard },
+      { label: "Subscriptions & billing", to: "/admin/subscriptions", icon: Receipt },
     ],
   },
   {
-    label: "Content",
+    label: "Global content",
     items: [
-      { label: "Question bank", to: "/admin/questions", icon: FolderOpen },
+      { label: "Courses", to: "/admin/courses", icon: BookOpen },
       { label: "Examinations", to: "/admin/exams", icon: FileText },
-      { label: "Submissions", to: "/admin/submissions", icon: Inbox },
-      { label: "Results", to: "/admin/results", icon: Award },
+      { label: "Question bank", to: "/admin/questions", icon: FolderOpen },
     ],
   },
   {
@@ -116,10 +113,32 @@ const studentNav: NavGroup[] = [
   },
 ];
 
+const consultancyNav: NavGroup[] = [
+  { label: "Overview", items: [{ label: "Dashboard", to: "/consultancy", icon: LayoutDashboard, end: true }] },
+  {
+    label: "Organization",
+    items: [
+      { label: "Teachers", to: "/consultancy/teachers", icon: UserCog },
+      { label: "Students", to: "/consultancy/students", icon: Users },
+      { label: "Subscription", to: "/consultancy/subscription", icon: CreditCard },
+    ],
+  },
+  {
+    label: "Account",
+    items: [
+      { label: "Messages", to: "/consultancy/chat", icon: MessageSquare },
+      { label: "Notifications", to: "/consultancy/notifications", icon: Bell },
+      { label: "Profile", to: "/consultancy/profile", icon: User },
+    ],
+  },
+];
+
 export function navGroupsFor(role: string | undefined): NavGroup[] {
   switch (role) {
     case "SUPER_ADMIN":
       return adminNav;
+    case "CONSULTANCY":
+      return consultancyNav;
     case "TEACHER":
       return teacherNav;
     case "STUDENT":
@@ -131,6 +150,7 @@ export function navGroupsFor(role: string | undefined): NavGroup[] {
 
 export const homePathForRole = (role: string | undefined): string => {
   if (role === "SUPER_ADMIN") return "/admin";
+  if (role === "CONSULTANCY") return "/consultancy";
   if (role === "TEACHER") return "/teacher";
   if (role === "STUDENT") return "/student";
   return "/login";

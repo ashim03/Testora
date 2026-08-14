@@ -1,4 +1,6 @@
 export { User } from "./User";
+export { Consultancy } from "./Consultancy";
+export { SubscriptionPackage } from "./SubscriptionPackage";
 export { TeacherProfile } from "./TeacherProfile";
 export { StudentProfile } from "./StudentProfile";
 export { TeacherStudentAssignment } from "./TeacherStudentAssignment";

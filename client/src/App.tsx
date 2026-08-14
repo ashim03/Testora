@@ -9,6 +9,9 @@ const ForgotPasswordPage = lazy(() => import("./pages/auth/ForgotPasswordPage").
 const ResetPasswordPage = lazy(() => import("./pages/auth/ResetPasswordPage").then((m) => ({ default: m.ResetPasswordPage })));
 
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard").then((m) => ({ default: m.AdminDashboard })));
+const ConsultanciesPage = lazy(() => import("./pages/admin/ConsultanciesPage").then((m) => ({ default: m.ConsultanciesPage })));
+const SubscriptionPackagesPage = lazy(() => import("./pages/admin/SubscriptionPackagesPage").then((m) => ({ default: m.SubscriptionPackagesPage })));
+const SubscriptionsPage = lazy(() => import("./pages/admin/SubscriptionsPage").then((m) => ({ default: m.SubscriptionsPage })));
 const TeachersPage = lazy(() => import("./pages/admin/TeachersPage").then((m) => ({ default: m.TeachersPage })));
 const StudentsPage = lazy(() => import("./pages/admin/StudentsPage").then((m) => ({ default: m.StudentsPage })));
 const CoursesPage = lazy(() => import("./pages/admin/CoursesPage").then((m) => ({ default: m.CoursesPage })));
@@ -21,6 +24,11 @@ const AdminResultsPage = lazy(() => import("./pages/admin/ResultsPage").then((m)
 const ReportsPage = lazy(() => import("./pages/admin/ReportsPage").then((m) => ({ default: m.ReportsPage })));
 const AuditLogsPage = lazy(() => import("./pages/admin/AuditLogsPage").then((m) => ({ default: m.AuditLogsPage })));
 const AdminSettingsPage = lazy(() => import("./pages/admin/SettingsPage").then((m) => ({ default: m.SettingsPage })));
+
+const ConsultancyDashboard = lazy(() => import("./pages/consultancy/ConsultancyDashboard").then((m) => ({ default: m.ConsultancyDashboard })));
+const ConsultancyTeachers = lazy(() => import("./pages/consultancy/ConsultancyTeachers").then((m) => ({ default: m.ConsultancyTeachers })));
+const ConsultancyStudents = lazy(() => import("./pages/consultancy/ConsultancyStudents").then((m) => ({ default: m.ConsultancyStudents })));
+const ConsultancySubscription = lazy(() => import("./pages/consultancy/ConsultancySubscription").then((m) => ({ default: m.ConsultancySubscription })));
 
 const TeacherDashboard = lazy(() => import("./pages/teacher/TeacherDashboard").then((m) => ({ default: m.TeacherDashboard })));
 const TeacherCourses = lazy(() => import("./pages/teacher/TeacherCourses").then((m) => ({ default: m.TeacherCourses })));
@@ -70,7 +78,7 @@ function withLayoutAnyRole(element: React.ReactNode) {
   return (
     <RequireAuth>
       <AppLayout>
-        <RequireRole roles={["STUDENT", "TEACHER", "SUPER_ADMIN"]}>{element}</RequireRole>
+        <RequireRole roles={["STUDENT", "TEACHER", "SUPER_ADMIN", "CONSULTANCY"]}>{element}</RequireRole>
       </AppLayout>
     </RequireAuth>
   );
@@ -86,6 +94,9 @@ export function App() {
         <Route path="/unauthorized" element={<UnauthorizedPage />} />
 
         <Route path="/admin" element={withLayout("SUPER_ADMIN", <AdminDashboard />)} />
+        <Route path="/admin/consultancies" element={withLayout("SUPER_ADMIN", <ConsultanciesPage />)} />
+        <Route path="/admin/packages" element={withLayout("SUPER_ADMIN", <SubscriptionPackagesPage />)} />
+        <Route path="/admin/subscriptions" element={withLayout("SUPER_ADMIN", <SubscriptionsPage />)} />
         <Route path="/admin/teachers" element={withLayout("SUPER_ADMIN", <TeachersPage />)} />
         <Route path="/admin/students" element={withLayout("SUPER_ADMIN", <StudentsPage />)} />
         <Route path="/admin/assignments" element={withLayout("SUPER_ADMIN", <AssignmentsPage />)} />
@@ -117,6 +128,15 @@ export function App() {
         <Route path="/teacher/settings" element={withLayout("TEACHER", <SettingsPage />)} />
         <Route path="/teacher/notifications" element={withLayout("TEACHER", <NotificationsPage />)} />
         <Route path="/teacher/chat" element={withLayout("TEACHER", <ChatPage />)} />
+
+        <Route path="/consultancy" element={withLayout("CONSULTANCY", <ConsultancyDashboard />)} />
+        <Route path="/consultancy/teachers" element={withLayout("CONSULTANCY", <ConsultancyTeachers />)} />
+        <Route path="/consultancy/students" element={withLayout("CONSULTANCY", <ConsultancyStudents />)} />
+        <Route path="/consultancy/subscription" element={withLayout("CONSULTANCY", <ConsultancySubscription />)} />
+        <Route path="/consultancy/profile" element={withLayout("CONSULTANCY", <ProfilePage />)} />
+        <Route path="/consultancy/settings" element={withLayout("CONSULTANCY", <SettingsPage />)} />
+        <Route path="/consultancy/notifications" element={withLayout("CONSULTANCY", <NotificationsPage />)} />
+        <Route path="/consultancy/chat" element={withLayout("CONSULTANCY", <ChatPage />)} />
 
         <Route path="/student" element={withLayout("STUDENT", <StudentDashboard />)} />
         <Route path="/student/courses" element={withLayout("STUDENT", <StudentCourses />)} />

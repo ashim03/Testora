@@ -4,6 +4,7 @@ import {
   Assignment,
   AssignmentSubmission,
   Batch,
+  Consultancy,
   Course,
   Exam,
   ExamAnswer,
@@ -15,6 +16,7 @@ import {
   Question,
   Result,
   StudentProfile,
+  SubscriptionPackage,
   TeacherProfile,
   TeacherStudentAssignment,
   User,
@@ -26,6 +28,7 @@ const QA_TAG = "QA-SEED";
 const QA_PASSWORD = "QaTest@12345";
 const qaEmails = [
   "qa.admin@test.com",
+  "qa.consultancy@test.com",
   "qa.teacher@test.com",
   "ielts.student@test.com",
   "pte.student@test.com",
@@ -74,8 +77,9 @@ async function ensureUser(input: {
   firstName: string;
   lastName: string;
   email: string;
-  role: "SUPER_ADMIN" | "TEACHER" | "STUDENT";
+  role: "SUPER_ADMIN" | "CONSULTANCY" | "TEACHER" | "STUDENT";
   createdBy?: Types.ObjectId;
+  consultancyId?: Types.ObjectId;
 }) {
   const passwordHash = await hashPassword(QA_PASSWORD);
   return User.findOneAndUpdate(
@@ -89,6 +93,7 @@ async function ensureUser(input: {
         status: "ACTIVE",
         passwordHash,
         createdBy: input.createdBy ?? null,
+        consultancyId: input.consultancyId ?? null,
         deletedAt: null,
       },
     },
@@ -158,9 +163,68 @@ async function main(): Promise<void> {
   await resetQaData();
 
   const admin = await ensureUser({ firstName: "QA", lastName: "Admin", email: "qa.admin@test.com", role: "SUPER_ADMIN" });
-  const teacher = await ensureUser({ firstName: "QA", lastName: "Teacher", email: "qa.teacher@test.com", role: "TEACHER", createdBy: admin._id as Types.ObjectId });
-  const ieltsStudent = await ensureUser({ firstName: "IELTS Test", lastName: "Student", email: "ielts.student@test.com", role: "STUDENT", createdBy: teacher._id as Types.ObjectId });
-  const pteStudent = await ensureUser({ firstName: "PTE Test", lastName: "Student", email: "pte.student@test.com", role: "STUDENT", createdBy: teacher._id as Types.ObjectId });
+
+  await SubscriptionPackage.findOneAndUpdate(
+    { name: "QA Basic 25" },
+    {
+      $set: {
+        name: "QA Basic 25",
+        studentLimit: 25,
+        teacherLimit: 5,
+        durationDays: 30,
+        price: 10000,
+        currency: "NPR",
+        description: "QA seed package",
+        active: true,
+        deletedAt: null,
+      },
+    },
+    { upsert: true, new: true, setDefaultsOnInsert: true },
+  );
+  const pkgPro = await SubscriptionPackage.findOneAndUpdate(
+    { name: "QA Pro 100" },
+    {
+      $set: {
+        name: "QA Pro 100",
+        studentLimit: 100,
+        teacherLimit: 20,
+        durationDays: 30,
+        price: 32000,
+        currency: "NPR",
+        description: "QA seed package",
+        active: true,
+        deletedAt: null,
+      },
+    },
+    { upsert: true, new: true, setDefaultsOnInsert: true },
+  );
+
+  const consultancy = await Consultancy.findOneAndUpdate(
+    { code: "QAACAD" },
+    {
+      $set: {
+        name: "QA Academy",
+        code: "QAACAD",
+        contactName: "QA Consultancy",
+        contactEmail: "qa.consultancy@test.com",
+        status: "ACTIVE",
+        packageId: pkgPro._id,
+        subscriptionStatus: "ACTIVE",
+        subscriptionStartDate: new Date(),
+        subscriptionEndDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        studentLimit: pkgPro.studentLimit,
+        teacherLimit: pkgPro.teacherLimit,
+        deletedAt: null,
+      },
+    },
+    { upsert: true, new: true, setDefaultsOnInsert: true },
+  );
+
+  const consultancyAccount = await ensureUser({ firstName: "QA", lastName: "Academy", email: "qa.consultancy@test.com", role: "CONSULTANCY", createdBy: admin._id as Types.ObjectId, consultancyId: consultancy._id as Types.ObjectId });
+  void consultancyAccount;
+  const teacher = await ensureUser({ firstName: "QA", lastName: "Teacher", email: "qa.teacher@test.com", role: "TEACHER", createdBy: admin._id as Types.ObjectId, consultancyId: consultancy._id as Types.ObjectId });
+  const ieltsStudent = await ensureUser({ firstName: "IELTS Test", lastName: "Student", email: "ielts.student@test.com", role: "STUDENT", createdBy: teacher._id as Types.ObjectId, consultancyId: consultancy._id as Types.ObjectId });
+  const pteStudent = await ensureUser({ firstName: "PTE Test", lastName: "Student", email: "pte.student@test.com", role: "STUDENT", createdBy: teacher._id as Types.ObjectId, consultancyId: consultancy._id as Types.ObjectId });
 
   await TeacherProfile.create({ userId: teacher._id, qualification: "QA-certified practice workflow tester" });
 

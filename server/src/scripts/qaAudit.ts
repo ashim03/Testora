@@ -1,4 +1,4 @@
-type Role = "admin" | "teacher" | "ieltsStudent" | "pteStudent";
+type Role = "admin" | "consultancy" | "teacher" | "ieltsStudent" | "pteStudent";
 
 const REQUIRED_PTE_TYPES = [
   "READ_ALOUD",
@@ -94,6 +94,7 @@ async function main(): Promise<void> {
   await checkApi("System", "Health endpoint", "/health");
 
   await login("admin", "qa.admin@test.com");
+  await login("consultancy", "qa.consultancy@test.com");
   await login("teacher", "qa.teacher@test.com");
   await login("ieltsStudent", "ielts.student@test.com");
   await login("pteStudent", "pte.student@test.com");
@@ -108,6 +109,29 @@ async function main(): Promise<void> {
   await checkApi("Auth", "Authenticated profile", "/auth/me", token("admin"));
   await checkApi("Authorization", "Student blocked from admin API", "/admin/dashboard", token("ieltsStudent"), 403);
   await checkApi("Authorization", "Teacher blocked from student API", "/student/dashboard", token("teacher"), 403);
+  await checkApi("Authorization", "Student blocked from consultancy API", "/consultancy/overview", token("ieltsStudent"), 403);
+  await checkApi("Authorization", "Teacher blocked from consultancy API", "/consultancy/overview", token("teacher"), 403);
+  await checkApi("Authorization", "Consultancy blocked from admin API", "/admin/dashboard", token("consultancy"), 403);
+  await checkApi("Authorization", "Consultancy blocked from teacher API", "/teacher/dashboard", token("consultancy"), 403);
+
+  const consultancies = await checkApi("Admin", "Consultancy list", "/admin/consultancies?search=QA&limit=100", token("admin"));
+  record("Consultancy", "QA Academy created and visible", dataRows(consultancies).some((c) => String(c.code) === "QAACAD"), `${dataRows(consultancies).length} rows`);
+  const packages = await checkApi("Admin", "Subscription packages", "/admin/subscription-packages?limit=100", token("admin"));
+  const pkgRows = dataRows(packages);
+  record("Consultancy", "NPR packages seeded", pkgRows.some((p) => p.currency === "NPR"), `${pkgRows.length} rows`);
+  record("Consultancy", "Package capacity fields present", pkgRows.every((p) => typeof p.studentLimit === "number" && typeof p.price === "number"), "studentLimit/price on all");
+  const subscriptions = await checkApi("Admin", "Subscriptions ledger", "/admin/subscriptions", token("admin"));
+  const qaAcademy = (dataRows(subscriptions) as any[]).find((s) => String(s.code) === "QAACAD");
+  record("Consultancy", "QA Academy subscription active", Boolean(qaAcademy && qaAcademy.subscriptionStatus === "ACTIVE"), JSON.stringify(qaAcademy?.subscriptionStatus));
+  record("Consultancy", "QA Academy capacity enforced", Boolean(qaAcademy && qaAcademy.studentLimit === 100 && qaAcademy.teacherLimit === 20), `${qaAcademy?.studentLimit}/${qaAcademy?.teacherLimit}`);
+
+  const consultancyOverview = await checkApi("Consultancy", "Overview", "/consultancy/overview", token("consultancy"));
+  record("Consultancy", "Consultancy sees own org", Boolean(consultancyOverview?.data?.consultancy?.code === "QAACAD"), consultancyOverview?.data?.consultancy?.name);
+  const consultancyTeachers = await checkApi("Consultancy", "Teacher list (scoped)", "/consultancy/teachers?limit=100", token("consultancy"));
+  record("Consultancy", "Consultancy teacher list scoped", (dataRows(consultancyTeachers) as any[]).some((t) => t.email === "qa.teacher@test.com"), `${dataRows(consultancyTeachers).length} rows`);
+  const consultancyStudents = await checkApi("Consultancy", "Student list (scoped)", "/consultancy/students?limit=100", token("consultancy"));
+  record("Consultancy", "Consultancy student list scoped", (dataRows(consultancyStudents) as any[]).length >= 2, `${dataRows(consultancyStudents).length} rows`);
+  await checkApi("Consultancy", "Subscription view", "/consultancy/subscription", token("consultancy"));
 
   await checkApi("Admin", "Dashboard", "/admin/dashboard", token("admin"));
   const adminBatches = await checkApi("Admin", "Batch overview", "/admin/batches", token("admin"));

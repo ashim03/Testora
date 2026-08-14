@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import * as userService from "../services/userService";
 import * as reportService from "../services/reportService";
 import * as courseService from "../services/courseService";
+import * as consultancyService from "../services/consultancyService";
 import { ApiError, asyncHandler } from "../utils/helpers";
 
 export const dashboard = asyncHandler(async (_req: Request, res: Response) => {
@@ -158,6 +159,82 @@ export const createCategory = asyncHandler(async (req: Request, res: Response) =
 export const listCategories = asyncHandler(async (_req: Request, res: Response) => {
   const data = await courseService.listCategories();
   res.json({ success: true, message: "Categories", data });
+});
+
+export const listConsultancies = asyncHandler(async (req: Request, res: Response) => {
+  const result = await consultancyService.listConsultancies(queryOf(req));
+  res.json({ success: true, message: "Consultancies", data: result.data, pagination: paginationOf(result) });
+});
+
+export const createConsultancy = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.user) throw new ApiError(401, "Authentication required");
+  const data = await consultancyService.createConsultancy(req.body, req.user, req.ip || null);
+  res.status(201).json({ success: true, message: "Consultancy created", data });
+});
+
+export const getConsultancy = asyncHandler(async (req: Request, res: Response) => {
+  const data = await consultancyService.getConsultancy(String(req.params.id));
+  res.json({ success: true, message: "Consultancy", data });
+});
+
+export const updateConsultancy = asyncHandler(async (req: Request, res: Response) => {
+  const data = await consultancyService.updateConsultancy(String(req.params.id), req.body);
+  res.json({ success: true, message: "Consultancy updated", data });
+});
+
+export const setConsultancyStatus = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.user) throw new ApiError(401, "Authentication required");
+  const data = await consultancyService.setConsultancyStatus(String(req.params.id), req.body.status, req.user, req.ip || null);
+  res.json({ success: true, message: "Consultancy status updated", data });
+});
+
+export const deleteConsultancy = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.user) throw new ApiError(401, "Authentication required");
+  await consultancyService.deleteConsultancy(String(req.params.id), req.user, req.ip || null);
+  res.json({ success: true, message: "Consultancy deleted" });
+});
+
+export const listSubscriptionPackages = asyncHandler(async (req: Request, res: Response) => {
+  const result = await consultancyService.listSubscriptionPackages({
+    page: String(req.query.page || 1),
+    limit: String(req.query.limit || 100),
+    search: (req.query.search as string) || "",
+    active: (req.query.active as string) || "",
+  });
+  res.json({ success: true, message: "Subscription packages", data: result.data, pagination: paginationOf(result) });
+});
+
+export const createSubscriptionPackage = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.user) throw new ApiError(401, "Authentication required");
+  const data = await consultancyService.createSubscriptionPackage(req.body, req.user, req.ip || null);
+  res.status(201).json({ success: true, message: "Subscription package created", data });
+});
+
+export const updateSubscriptionPackage = asyncHandler(async (req: Request, res: Response) => {
+  const data = await consultancyService.updateSubscriptionPackage(String(req.params.id), req.body);
+  res.json({ success: true, message: "Subscription package updated", data });
+});
+
+export const deleteSubscriptionPackage = asyncHandler(async (req: Request, res: Response) => {
+  await consultancyService.deleteSubscriptionPackage(String(req.params.id));
+  res.json({ success: true, message: "Subscription package deleted" });
+});
+
+export const assignPackage = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.user) throw new ApiError(401, "Authentication required");
+  const data = await consultancyService.assignPackageToConsultancy(
+    String(req.params.id),
+    req.body.packageId,
+    req.body.startDate,
+    req.user,
+    req.ip || null,
+  );
+  res.json({ success: true, message: "Subscription activated", data });
+});
+
+export const listSubscriptions = asyncHandler(async (_req: Request, res: Response) => {
+  const data = await consultancyService.listSubscriptions();
+  res.json({ success: true, message: "Subscriptions", data });
 });
 
 function queryOf(req: Request): Record<string, string> {

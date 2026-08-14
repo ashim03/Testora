@@ -1,7 +1,7 @@
-import { User, Exam, ExamAttempt, Result, TeacherStudentAssignment, Batch, Course, AuditLog } from "../models";
+import { User, Exam, ExamAttempt, Result, TeacherStudentAssignment, Batch, Course, AuditLog, Consultancy } from "../models";
 
 export async function adminDashboard(): Promise<unknown> {
-  const [teachers, students, active, inactive, suspended, tests, attempts, results, courses, batches] = await Promise.all([
+  const [teachers, students, active, inactive, suspended, tests, attempts, results, courses, batches, consultancies, activeSubscriptions] = await Promise.all([
     User.countDocuments({ role: "TEACHER", deletedAt: null }),
     User.countDocuments({ role: "STUDENT", deletedAt: null }),
     User.countDocuments({ status: "ACTIVE", deletedAt: null }),
@@ -12,6 +12,8 @@ export async function adminDashboard(): Promise<unknown> {
     Result.find({ published: true }).lean(),
     Course.find({}).lean(),
     Batch.countDocuments({ archived: false }),
+    Consultancy.countDocuments({ deletedAt: null }),
+    Consultancy.countDocuments({ deletedAt: null, subscriptionStatus: "ACTIVE", subscriptionEndDate: { $gt: new Date() } }),
   ]);
   const avgPct = results.length
     ? Math.round((results.reduce((a, r) => a + (r.percentage || 0), 0) / results.length) * 100) / 100
@@ -33,6 +35,8 @@ export async function adminDashboard(): Promise<unknown> {
     recentRegistrations,
     recentActivity,
     enrollment: { ieltsCourses, pteCourses, batches },
+    consultancies,
+    activeSubscriptions,
     skillScores: aggregateSkillScores(results),
   };
 }

@@ -1,0 +1,121 @@
+import { useQuery } from "@tanstack/react-query";
+import { CheckCircle2, Ban, Users, UserCog, Clock } from "lucide-react";
+import { apiGet } from "../../api/client";
+import { Card, CardContent } from "../../components/ui/card";
+import { Badge } from "../../components/ui/badge";
+import { ErrorState, PageSpinner, EmptyState } from "../../components/ui/feedback";
+import { formatDateTime } from "../../utils";
+
+interface Package {
+  id: string;
+  name: string;
+  studentLimit: number;
+  teacherLimit: number;
+  durationDays: number;
+  price: number;
+  currency: string;
+}
+
+interface Consultancy {
+  id: string;
+  name: string;
+  subscriptionStatus: string;
+  subscriptionStartDate?: string | null;
+  subscriptionEndDate?: string | null;
+  package?: Package | null;
+  studentLimit?: number | null;
+  teacherLimit?: number | null;
+  studentCount: number;
+  teacherCount: number;
+  daysLeft: number;
+}
+
+export function ConsultancySubscription() {
+  const { data, isLoading, isError, error } = useQuery({
+    queryKey: ["consultancy", "subscription"],
+    queryFn: async () => {
+      const res = await apiGet<{ consultancy: Consultancy; packages: Package[] }>("/consultancy/subscription");
+      return res.data;
+    },
+  });
+
+  if (isLoading) return <PageSpinner />;
+  if (isError || !data) return <ErrorState message={error instanceof Error ? error.message : undefined} />;
+
+  const c = data.consultancy;
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold">Subscription</h1>
+          <p className="text-sm text-muted-foreground">Your consultancy plan and capacity</p>
+        </div>
+        {c.subscriptionStatus === "ACTIVE" ? (
+          <Badge variant="secondary" className="gap-1.5"><CheckCircle2 className="size-3.5 text-emerald-600" /> Active</Badge>
+        ) : (
+          <Badge variant="destructive" className="gap-1.5"><Ban className="size-3.5" /> {c.subscriptionStatus}</Badge>
+        )}
+      </div>
+
+      {c.package ? (
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <div className="text-lg font-semibold">{c.package.name}</div>
+                <div className="mt-1 text-3xl font-bold text-primary">
+                  {c.package.price.toLocaleString()}<span className="text-sm font-semibold text-muted-foreground"> {c.package.currency}</span>
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">per {c.package.durationDays} days</p>
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div className="rounded-md bg-muted/40 p-3 text-center">
+                  <Users className="mx-auto size-4 text-muted-foreground" />
+                  <div className="mt-1 text-lg font-bold">{c.studentCount}/{c.studentLimit}</div>
+                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Students</div>
+                </div>
+                <div className="rounded-md bg-muted/40 p-3 text-center">
+                  <UserCog className="mx-auto size-4 text-muted-foreground" />
+                  <div className="mt-1 text-lg font-bold">{c.teacherCount}/{c.teacherLimit}</div>
+                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Teachers</div>
+                </div>
+                <div className="rounded-md bg-muted/40 p-3 text-center">
+                  <Clock className="mx-auto size-4 text-muted-foreground" />
+                  <div className="mt-1 text-lg font-bold">{c.daysLeft}</div>
+                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Days left</div>
+                </div>
+              </div>
+            </div>
+            <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-1 text-sm">
+              <div className="flex justify-between border-t py-2"><span className="text-muted-foreground">Started</span><span>{c.subscriptionStartDate ? formatDateTime(c.subscriptionStartDate) : "-"}</span></div>
+              <div className="flex justify-between border-t py-2"><span className="text-muted-foreground">Expires</span><span>{c.subscriptionEndDate ? formatDateTime(c.subscriptionEndDate) : "-"}</span></div>
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <EmptyState title="No subscription yet" description="Your consultancy is on trial. Contact the platform administrator to subscribe." />
+      )}
+
+      <div>
+        <h2 className="mb-3 text-sm font-semibold text-muted-foreground">Available packages</h2>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {data.packages.length === 0 ? (
+            <EmptyState title="No packages available" />
+          ) : (
+            data.packages.map((p) => (
+              <Card key={p.id}>
+                <CardContent className="p-4">
+                  <div className="text-base font-semibold">{p.name}</div>
+                  <div className="mt-1 text-2xl font-bold text-primary">{p.price.toLocaleString()}<span className="text-sm text-muted-foreground"> {p.currency}</span></div>
+                  <div className="mt-2 text-sm text-muted-foreground">{p.studentLimit} student seats · {p.teacherLimit} teacher seats · {p.durationDays} days</div>
+                  <p className="mt-2 text-xs text-muted-foreground">Contact the platform admin to activate a package for your consultancy.</p>
+                </CardContent>
+              </Card>
+            ))
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

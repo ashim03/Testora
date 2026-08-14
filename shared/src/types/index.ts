@@ -1,4 +1,4 @@
-export type UserRole = "SUPER_ADMIN" | "TEACHER" | "STUDENT";
+export type UserRole = "SUPER_ADMIN" | "CONSULTANCY" | "TEACHER" | "STUDENT";
 export type UserStatus = "ACTIVE" | "INACTIVE" | "SUSPENDED";
 export type UserRoleUnion = UserRole;
 

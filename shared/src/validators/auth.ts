@@ -103,7 +103,7 @@ const userBase = {
 
 export const createUserSchema = z.object({
   ...userBase,
-  role: z.enum(["SUPER_ADMIN", "TEACHER", "STUDENT"]),
+  role: z.enum(["SUPER_ADMIN", "CONSULTANCY", "TEACHER", "STUDENT"]),
   password: passwordSchema,
   teacherId: z.string().optional().nullable(),
   batchId: z.string().optional().nullable(),

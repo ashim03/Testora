@@ -1,7 +1,7 @@
 ﻿import mongoose, { type Types, type Document, type Model } from "mongoose";
 import { ROLES } from "@testora-platform/shared";
 
-export type UserRole = "SUPER_ADMIN" | "TEACHER" | "STUDENT";
+export type UserRole = "SUPER_ADMIN" | "CONSULTANCY" | "TEACHER" | "STUDENT";
 export type UserStatus = "ACTIVE" | "INACTIVE" | "SUSPENDED";
 
 export interface IUser extends Document {
@@ -20,6 +20,7 @@ export interface IUser extends Document {
   timezone?: string | null;
   lastLoginAt?: Date | null;
   createdBy?: Types.ObjectId | null;
+  consultancyId?: Types.ObjectId | null;
   deletedAt?: Date | null;
   createdAt: Date;
   updatedAt: Date;
@@ -42,6 +43,7 @@ const schema = new mongoose.Schema(
     timezone: { type: String, maxlength: 80, default: null },
     lastLoginAt: { type: Date, default: null },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
+    consultancyId: { type: mongoose.Schema.Types.ObjectId, ref: "Consultancy", default: null, index: true },
     deletedAt: { type: Date, default: null },
   },
   { timestamps: true },

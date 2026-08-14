@@ -5,3 +5,4 @@ export * from "./validators/auth";
 export * from "./validators/questions";
 export * from "./validators/exams";
 export * from "./validators/subscription";
+export * from "./validators/consultancy";
