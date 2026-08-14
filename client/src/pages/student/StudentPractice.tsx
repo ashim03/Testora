@@ -10,7 +10,20 @@ import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/ca
 import { TableToolbar, Pagination, TableSkeleton } from "../../components/ui/table-toolbar";
 import { ErrorState, EmptyState } from "../../components/ui/feedback";
 import { getErrorMessage, formatDuration, titleCase } from "../../utils";
-import { SECTIONAL_PARTS } from "@testora-platform/shared";
+import { QUESTION_CATEGORIES, SECTIONAL_PARTS } from "@testora-platform/shared";
+
+const CATEGORY_GROUPS: Record<string, { label: string; values: string[] }> = {
+  IELTS: {
+    label: "IELTS",
+    values: QUESTION_CATEGORIES.filter((c) => c.startsWith("IELTS_")),
+  },
+  PTE: {
+    label: "PTE",
+    values: QUESTION_CATEGORIES.filter((c) => c.startsWith("PTE_")),
+  },
+};
+
+const EXAM_TYPES = ["", "IELTS", "PTE"] as const;
 
 interface PracticeItem {
   exam: {
@@ -31,13 +44,7 @@ interface PracticeItem {
   remainingAttempts: number;
 }
 
-const CATEGORIES = [
-  "LISTENING",
-  "READING",
-  "WRITING",
-  "SPEAKING",
-  "GENERAL",
-].map((c) => `IELTS_${c}`);
+const CATEGORIES = QUESTION_CATEGORIES as string[];
 
 const attemptVariant = (status?: string): "secondary" | "outline" | "success" | "default" | "warning" => {
   if (status === "IN_PROGRESS") return "warning";
@@ -52,6 +59,7 @@ export function StudentPractice() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState(searchParams.get("section") || "");
+  const [examType, setExamType] = useState<string>("");
 
   const part = searchParams.get("part") || "";
   const sectionLabel = (category && SECTIONAL_PARTS[category]?.label) || "";
@@ -66,11 +74,21 @@ export function StudentPractice() {
     setPage(1);
   };
 
+  const setExamTypeFilter = (t: string) => {
+    setExamType(t);
+    setPage(1);
+  };
+
   const clearPart = () => {
     const next = new URLSearchParams(searchParams);
     next.delete("part");
     setSearchParams(next, { replace: true });
   };
+
+  const visibleCategories = useMemo(() => {
+    if (examType) return CATEGORY_GROUPS[examType].values;
+    return CATEGORIES;
+  }, [examType]);
 
   const params = useMemo(() => ({ page, limit: 9, search: search || undefined, category: category || undefined, part: part || undefined }), [page, search, category, part]);
 
@@ -121,13 +139,22 @@ export function StudentPractice() {
         onSearchChange={(v) => { setSearch(v); setPage(1); }}
       >
         <select
+          value={examType}
+          onChange={(e) => setExamTypeFilter(e.target.value)}
+          className="h-9 rounded-md border bg-background px-3 text-sm"
+          aria-label="Filter by exam type"
+        >
+          <option value="">All exam types</option>
+          {EXAM_TYPES.filter(Boolean).map((t) => <option key={t} value={t}>{t}</option>)}
+        </select>
+        <select
           value={category}
           onChange={(e) => setSection(e.target.value)}
           className="h-9 rounded-md border bg-background px-3 text-sm"
           aria-label="Filter by category"
         >
           <option value="">All categories</option>
-          {CATEGORIES.map((c) => <option key={c} value={c}>{titleCase(c).replace("IELTS_", "IELTS ")}</option>)}
+          {visibleCategories.map((c) => <option key={c} value={c}>{titleCase(c).replace("IELTS_", "IELTS ").replace("PTE_", "PTE ")}</option>)}
         </select>
       </TableToolbar>
 

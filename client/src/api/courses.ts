@@ -143,8 +143,8 @@ export const courseApi = {
   setCourseActive: (courseId: string, active: boolean) =>
     apiPatch(`/courses/${courseId}/status`, { active }),
   getStudentCourse: (courseId: string) => apiGet<CourseFull>(`/courses/${courseId}/learn`),
-  markLessonComplete: (courseId: string, lessonId: string) =>
-    apiPatch(`/courses/${courseId}/lessons/${lessonId}/complete`, { source: "LESSON_COMPLETED" }),
+  markLessonComplete: (courseId: string, lessonId: string, source = "LESSON_COMPLETED") =>
+    apiPatch(`/courses/${courseId}/lessons/${lessonId}/complete`, { source }),
   recordMaterialView: (courseId: string, lessonId: string, materialId: string) =>
     apiPost(`/courses/${courseId}/materials/${materialId}/view`, { lessonId }),
 };

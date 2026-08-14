@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { ChevronLeft, ChevronRight, Flag, LayoutGrid, ListChecks } from "lucide-react";
 import { apiGet, apiPost, apiPatch } from "../../api/client";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
@@ -10,7 +11,7 @@ import { PageSpinner, ErrorState } from "../../components/ui/feedback";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../../components/ui/dialog";
 import { SpeakingRecorder, AUDIO_QUESTION_TYPES } from "../../components/SpeakingRecorder";
 import { AudioPlayer, type AudioPlayRules } from "../../components/shared/AudioPlayer";
-import { formatDuration, getErrorMessage } from "../../utils";
+import { cn, formatDuration, getErrorMessage } from "../../utils";
 
 interface QuestionView {
   _id?: string;
@@ -87,10 +88,40 @@ interface RenderSection {
   audioPlayRules?: AudioPlayRules | null;
 }
 
+interface QuestionNode {
+  index: number;
+  qid: string;
+  sectionKey: string;
+}
+
 function defaultValue(q: QuestionView): unknown {
   if (AUDIO_QUESTION_TYPES.has(q.type)) return {};
   if (CHOICE_QUESTION_TYPES.has(q.type)) return [];
   return "";
+}
+
+function buildNodes(d: AttemptData): QuestionNode[] {
+  const qs = d.questions ?? [];
+  const secs = (d.exam.sections ?? []).map((s, i) => ({ _key: String(i), title: s.title || `Section ${i + 1}` }));
+  const nodes: QuestionNode[] = [];
+  if (secs.length) {
+    let offset = 0;
+    secs.forEach((s, i) => {
+      const ids = d.exam.sections?.[i]?.questionIds ?? [];
+      for (let k = 0; k < ids.length; k += 1) {
+        const q = qs[offset + k];
+        if (q) nodes.push({ index: offset + k, qid: String(q._id ?? q.id ?? offset + k), sectionKey: s._key });
+      }
+      offset += ids.length;
+    });
+    for (; offset < qs.length; offset += 1) {
+      const q = qs[offset];
+      if (q) nodes.push({ index: offset, qid: String(q._id ?? q.id ?? offset), sectionKey: "" });
+    }
+  } else {
+    qs.forEach((q, i) => nodes.push({ index: i, qid: String(q._id ?? q.id ?? i), sectionKey: "" }));
+  }
+  return nodes;
 }
 
 export function ExamAttemptPage() {
@@ -109,9 +140,26 @@ export function ExamAttemptPage() {
   const [remaining, setRemaining] = useState<number | null>(null);
   const [dirty, setDirty] = useState(false);
   const [confirmSubmit, setConfirmSubmit] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [reviewOpen, setReviewOpen] = useState(false);
   const [retryTick, setRetryTick] = useState(0);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [flagged, setFlagged] = useState<Set<string>>(() => {
+    try {
+      const raw = JSON.parse(localStorage.getItem(`attempt:${QID}:flagged`) ?? "[]");
+      return new Set<string>(Array.isArray(raw) ? raw : []);
+    } catch {
+      return new Set<string>();
+    }
+  });
   const hydratedRef = useRef<string | null>(null);
   const retryCountRef = useRef(0);
+
+  const nodes = useMemo<QuestionNode[]>(() => (data ? buildNodes(data) : []), [data]);
+
+  useEffect(() => {
+    localStorage.setItem(`attempt:${QID}:flagged`, JSON.stringify([...flagged]));
+  }, [flagged, QID]);
 
   useEffect(() => {
     if (!data) return;
@@ -203,9 +251,69 @@ export function ExamAttemptPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [answers, dirty, retryTick]);
 
-  function updateAnswer(id: string, value: unknown, answered: boolean) {
-    setAnswers((prev) => ({ ...prev, [id]: { questionId: id, answer: value, answered } }));
-    setDirty(true);
+  useEffect(() => {
+    if (!data || nodes.length === 0) return;
+    const obs = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            const idx = Number((entry.target as HTMLElement).dataset.qidx);
+            if (!Number.isNaN(idx)) setActiveIndex(idx);
+          }
+        }
+      },
+      { rootMargin: "-35% 0px -55% 0px" },
+    );
+    nodes.forEach((n) => {
+      const el = document.getElementById(`exam-q-${n.index}`);
+      if (el) obs.observe(el);
+    });
+    return () => obs.disconnect();
+  }, [data, nodes]);
+
+  function scrollToQuestion(index: number) {
+    document.getElementById(`exam-q-${index}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    setActiveIndex(index);
+  }
+
+  function goNext() {
+    if (nodes.length === 0) return;
+    const pos = nodes.findIndex((n) => n.index === activeIndex);
+    const target = nodes[pos + 1] ?? nodes[0];
+    if (target) scrollToQuestion(target.index);
+  }
+
+  function goPrev() {
+    if (nodes.length === 0) return;
+    const pos = nodes.findIndex((n) => n.index === activeIndex);
+    const target = nodes[pos - 1] ?? nodes[nodes.length - 1];
+    if (target) scrollToQuestion(target.index);
+  }
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
+      if (e.altKey || e.ctrlKey || e.metaKey) return;
+      if (e.key === "ArrowRight") {
+        e.preventDefault();
+        goNext();
+      } else if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        goPrev();
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
+
+  function toggleFlag(qid: string) {
+    setFlagged((prev) => {
+      const next = new Set(prev);
+      if (next.has(qid)) next.delete(qid);
+      else next.add(qid);
+      return next;
+    });
   }
 
   function renderSections(): Array<{ section: RenderSection | null; questions: Array<{ index: number; q: QuestionView }> }> {
@@ -254,15 +362,54 @@ export function ExamAttemptPage() {
   const questions = data.questions ?? [];
   const answeredCount = Object.values(answers).filter((a) => a.answered).length;
   const unansweredCount = Math.max(0, questions.length - answeredCount);
+  const flaggedCount = nodes.filter((n) => flagged.has(n.qid)).length;
+  const answeredNodes = nodes.filter((n) => answers[n.qid]?.answered).length;
+  const activeNode = nodes.find((n) => n.index === activeIndex);
+
+  const paletteButton = (n: QuestionNode) => {
+    const answered = answers[n.qid]?.answered ?? false;
+    const isFlagged = flagged.has(n.qid);
+    const isActive = n.index === activeIndex;
+    return (
+      <button
+        key={n.qid}
+        type="button"
+        onClick={() => {
+          scrollToQuestion(n.index);
+          setPaletteOpen(false);
+        }}
+        className={cn(
+          "flex h-9 w-9 items-center justify-center rounded-md border text-xs font-semibold transition-colors",
+          isFlagged ? "border-amber-400 bg-amber-100 text-amber-800" : answered ? "border-brand-600 bg-brand-600 text-white" : "border-muted bg-muted text-muted-foreground hover:bg-muted/70",
+          isActive && "ring-2 ring-ring ring-offset-1",
+        )}
+        title={`Question ${n.index + 1}${answered ? " · answered" : ""}${isFlagged ? " · flagged" : ""}`}
+      >
+        {n.index + 1}
+      </button>
+    );
+  };
 
   return (
     <div className="space-y-6">
       <div className="sticky top-16 z-20 flex flex-wrap items-center justify-between gap-3 border-b bg-background/80 py-2 backdrop-blur">
-        <div>
-          <h1 className="text-lg font-bold">{data.exam.title}</h1>
+        <div className="min-w-0">
+          <h1 className="truncate text-lg font-bold">{data.exam.title}</h1>
           <p className="text-xs text-muted-foreground">{data.exam.category.replace(/_/g, " ")} · Attempt #{data.attempt.attemptNumber}</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant="secondary" className="hidden gap-1 sm:inline-flex">
+            <span className="size-2 rounded-full bg-brand-600" />
+            {answeredNodes}/{nodes.length} answered
+          </Badge>
+          <Badge variant="secondary" className="hidden gap-1 sm:inline-flex" title={`${flaggedCount} flagged question${flaggedCount === 1 ? "" : "s"}`}>
+            <Flag className="size-3" />
+            {flaggedCount}
+          </Badge>
+          <Button size="sm" variant="outline" onClick={() => setPaletteOpen(true)}>
+            <LayoutGrid className="mr-1 size-3.5" />
+            Questions
+          </Button>
           {remaining != null && remaining <= 60 && !hasExpired && <Badge variant="destructive">Time left: {formatDuration(remaining)}</Badge>}
           {remaining != null && remaining > 60 && !hasExpired && <Badge variant="secondary">Time left: {formatDuration(remaining)}</Badge>}
           {hasExpired && <Badge variant="destructive">Time expired</Badge>}
@@ -319,7 +466,10 @@ export function ExamAttemptPage() {
                     attemptId={QID}
                     question={q}
                     answer={current?.answer}
+                    answered={current?.answered ?? false}
+                    flagged={flagged.has(id)}
                     onAnswer={(v, answered) => updateAnswer(id, v, answered)}
+                    onToggleFlag={() => toggleFlag(id)}
                   />
                 );
               })}
@@ -332,6 +482,93 @@ export function ExamAttemptPage() {
           )}
         </div>
       )}
+
+      <div className="sticky bottom-4 z-20 flex items-center justify-center gap-2 md:hidden">
+        <Button size="sm" variant="outline" className="bg-background/90 backdrop-blur" onClick={goPrev}>
+          <ChevronLeft className="size-4" />
+        </Button>
+        <Button size="sm" variant="outline" className="bg-background/90 backdrop-blur" onClick={() => setPaletteOpen(true)}>
+          <LayoutGrid className="mr-1 size-4" />
+          {answeredNodes}/{nodes.length}
+          {flaggedCount > 0 && <Flag className="ml-1 size-3.5 fill-amber-400 text-amber-500" />}
+        </Button>
+        <Button size="sm" variant="outline" className="bg-background/90 backdrop-blur" onClick={goNext}>
+          <ChevronRight className="size-4" />
+        </Button>
+      </div>
+
+      <Dialog open={paletteOpen} onOpenChange={setPaletteOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Questions</DialogTitle>
+            <DialogDescription>
+              Answered <span className="font-semibold text-foreground">{answeredNodes}</span> of {nodes.length} ·{" "}
+              <span className="inline-flex items-center gap-1 text-amber-600"><Flag className="size-3" /> {flaggedCount} flagged</span>
+              {activeNode && <> · currently on #{activeNode.index + 1}</>}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid max-h-[50dvh] grid-cols-6 gap-2 overflow-y-auto pr-1 sm:grid-cols-8">
+            {nodes.map(paletteButton)}
+          </div>
+          <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
+            <span className="flex items-center gap-1.5"><span className="size-3 rounded-sm border border-muted bg-muted" /> Unanswered</span>
+            <span className="flex items-center gap-1.5"><span className="size-3 rounded-sm border border-brand-600 bg-brand-600" /> Answered</span>
+            <span className="flex items-center gap-1.5"><span className="size-3 rounded-sm border border-amber-400 bg-amber-100" /> Flagged</span>
+            <span className="flex items-center gap-1.5"><span className="size-3 rounded-sm border border-dashed" /> Current</span>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setReviewOpen(true)}>
+              <ListChecks className="mr-1 size-4" />
+              Review flagged &amp; unanswered
+            </Button>
+            <Button variant="outline" onClick={() => setPaletteOpen(false)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={reviewOpen} onOpenChange={setReviewOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Review before submitting</DialogTitle>
+            <DialogDescription>
+              {flaggedCount} flagged · {unansweredCount} unanswered
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[55dvh] space-y-2 overflow-y-auto pr-1">
+            {nodes.filter((n) => flagged.has(n.qid) || !answers[n.qid]?.answered).length === 0 && (
+              <p className="text-sm text-muted-foreground">Everything looks good — every question has an answer and nothing is flagged.</p>
+            )}
+            {nodes.map((n) => {
+              const isFlagged = flagged.has(n.qid);
+              const isUnanswered = !answers[n.qid]?.answered;
+              if (!isFlagged && !isUnanswered) return null;
+              const title = data.questions[n.index]?.title ?? `Question ${n.index + 1}`;
+              return (
+                <button
+                  key={n.qid}
+                  type="button"
+                  onClick={() => {
+                    scrollToQuestion(n.index);
+                    setReviewOpen(false);
+                  }}
+                  className="flex w-full items-center gap-3 rounded-md border p-2 text-left text-sm transition-colors hover:bg-muted"
+                >
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold">{n.index + 1}</span>
+                  <span className="min-w-0 flex-1 truncate">{title}</span>
+                  {isFlagged && <Badge variant="secondary" className="shrink-0 gap-1"><Flag className="size-3 text-amber-500" /> Flagged</Badge>}
+                  {isUnanswered && <Badge variant="destructive" className="shrink-0">Unanswered</Badge>}
+                </button>
+              );
+            })}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setReviewOpen(false)}>Back to questions</Button>
+            <Button onClick={() => { setReviewOpen(false); setConfirmSubmit(true); }} disabled={submitMutation.isPending}>
+              Submit now
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={confirmSubmit} onOpenChange={setConfirmSubmit}>
         <DialogContent>
@@ -353,14 +590,22 @@ export function ExamAttemptPage() {
       </Dialog>
     </div>
   );
+
+  function updateAnswer(id: string, value: unknown, answered: boolean) {
+    setAnswers((prev) => ({ ...prev, [id]: { questionId: id, answer: value, answered } }));
+    setDirty(true);
+  }
 }
 
-function QuestionCard({ index, attemptId, question, answer, onAnswer }: {
+function QuestionCard({ index, attemptId, question, answer, answered, flagged, onAnswer, onToggleFlag }: {
   index: number;
   attemptId: string;
   question: QuestionView;
   answer: unknown;
+  answered: boolean;
+  flagged: boolean;
   onAnswer: (value: unknown, answered: boolean) => void;
+  onToggleFlag: () => void;
 }) {
   const isChoice = CHOICE_QUESTION_TYPES.has(question.type);
   const isAudio = AUDIO_QUESTION_TYPES.has(question.type);
@@ -368,12 +613,24 @@ function QuestionCard({ index, attemptId, question, answer, onAnswer }: {
   const qid = String(question._id ?? question.id ?? index);
 
   return (
-    <Card>
+    <Card id={`exam-q-${index}`} data-qidx={index} className="scroll-mt-32">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-base">
-          <span className="flex size-6 items-center justify-center rounded-full bg-muted text-xs font-semibold">{index + 1}</span>
-          <span>{question.title}</span>
+        <CardTitle className="flex flex-wrap items-center gap-2 text-base">
+          <span className={cn("flex size-6 items-center justify-center rounded-full text-xs font-semibold", answered ? "bg-brand-600 text-white" : "bg-muted")}>{index + 1}</span>
+          <span className="min-w-0 flex-1">{question.title}</span>
           <span className="text-xs font-normal text-muted-foreground">({question.marks ?? 1} pt)</span>
+          <button
+            type="button"
+            onClick={onToggleFlag}
+            className={cn(
+              "inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs font-medium transition-colors",
+              flagged ? "border-amber-400 bg-amber-100 text-amber-800" : "border-muted text-muted-foreground hover:bg-muted",
+            )}
+            title={flagged ? "Remove flag" : "Flag for review"}
+          >
+            <Flag className={cn("size-3.5", flagged && "fill-amber-500 text-amber-500")} />
+            {flagged ? "Flagged" : "Flag"}
+          </button>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -395,7 +652,7 @@ function QuestionCard({ index, attemptId, question, answer, onAnswer }: {
           </div>
         )}
         {isAudio ? (
-          <SpeakingRecorder value={answer} onChange={(v, answered) => onAnswer(v, answered)} />
+          <SpeakingRecorder value={answer} onChange={(v, answeredFlag) => onAnswer(v, answeredFlag)} />
         ) : isChoice ? (
           <div className="space-y-2">
             {(question.options ?? []).map((opt) => {
