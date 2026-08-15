@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { CheckCircle2, Ban, History } from "lucide-react";
+import { CheckCircle2, Ban, History, FileText } from "lucide-react";
 import { apiGet, apiPost } from "../../api/client";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogC
 import { Label } from "../../components/ui/label";
 import { EmptyState, PageSpinner, ErrorState } from "../../components/ui/feedback";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../components/ui/table";
+import { InvoiceDialog } from "../../components/shared/InvoiceDialog";
 import { getErrorMessage, formatDateTime } from "../../utils";
 
 interface Package {
@@ -23,6 +24,7 @@ interface Package {
 }
 
 interface LedgerEntry {
+  index: number;
   packageName: string;
   price: number;
   currency: string;
@@ -56,6 +58,7 @@ export function SubscriptionsPage() {
   const [assignTarget, setAssignTarget] = useState<Consultancy | null>(null);
   const [selectedPackage, setSelectedPackage] = useState("");
   const [historyTarget, setHistoryTarget] = useState<Consultancy | null>(null);
+  const [invoiceTarget, setInvoiceTarget] = useState<{ url: string; code: string } | null>(null);
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["admin", "subscriptions"],
@@ -205,12 +208,13 @@ export function SubscriptionsPage() {
                   <TableHead>Period</TableHead>
                   <TableHead>Seats</TableHead>
                   <TableHead>Assigned</TableHead>
+                  <TableHead className="text-right">Action</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {(!historyTarget?.ledger || historyTarget.ledger.length === 0) ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="py-6 text-center text-sm text-muted-foreground">No billing history yet.</TableCell>
+                    <TableCell colSpan={6} className="py-6 text-center text-sm text-muted-foreground">No billing history yet.</TableCell>
                   </TableRow>
                 ) : (
                   [...historyTarget.ledger].reverse().map((entry, idx) => (
@@ -220,6 +224,16 @@ export function SubscriptionsPage() {
                       <TableCell className="text-xs text-muted-foreground">{formatDateTime(entry.startDate)} — {formatDateTime(entry.endDate)}</TableCell>
                       <TableCell className="text-xs text-muted-foreground">{entry.studentLimit} students · {entry.teacherLimit} teachers</TableCell>
                       <TableCell className="text-xs text-muted-foreground">{formatDateTime(entry.assignedAt)}</TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 text-xs"
+                          onClick={() => setInvoiceTarget({ url: `/admin/consultancies/${historyTarget.id}/invoice/${entry.index}`, code: historyTarget.code })}
+                        >
+                          <FileText className="size-3.5" /> Invoice
+                        </Button>
+                      </TableCell>
                     </TableRow>
                   ))
                 )}
@@ -228,6 +242,12 @@ export function SubscriptionsPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <InvoiceDialog
+        open={!!invoiceTarget}
+        onOpenChange={(o) => { if (!o) setInvoiceTarget(null); }}
+        url={invoiceTarget?.url ?? ""}
+      />
     </div>
   );
 }

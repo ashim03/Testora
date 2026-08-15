@@ -134,6 +134,12 @@ async function main(): Promise<void> {
   await checkApi("Consultancy", "Subscription view", "/consultancy/subscription", token("consultancy"));
   const consultancySub = await checkApi("Consultancy", "Subscription view (ledger)", "/consultancy/subscription", token("consultancy"));
   record("Consultancy", "Billing ledger recorded", Boolean(consultancySub?.data?.consultancy?.ledger?.length), JSON.stringify(consultancySub?.data?.consultancy?.ledger?.length));
+  const invoiceRes = await checkApi("Consultancy", "Generate invoice (own ledger)", "/consultancy/subscription/invoice/0", token("consultancy"));
+  record("Invoice", "Invoice number generated", Boolean(invoiceRes?.data?.invoiceNo && String(invoiceRes.data.invoiceNo).startsWith("INV-")), invoiceRes?.data?.invoiceNo);
+  record("Invoice", "Invoice amount matches ledger", Number(invoiceRes?.data?.total) > 0 && Number(invoiceRes?.data?.total) === Number(invoiceRes?.data?.price), JSON.stringify(invoiceRes?.data?.total));
+  await checkApi("Invoice", "Teacher blocked from invoice", "/consultancy/subscription/invoice/0", token("teacher"), 403);
+  const adminInvoice = await checkApi("Invoice", "Admin invoice generation", `/admin/consultancies/${qaAcademy?.id}/invoice/0`, token("admin"));
+  record("Invoice", "Admin invoice references QA Academy", Boolean(adminInvoice?.data?.consultancyCode === "QAACAD"), adminInvoice?.data?.invoiceNo);
   const contentOverview = await checkApi("Consultancy", "Content overview", "/consultancy/content/overview", token("consultancy"));
   record("Consultancy", "Content overview counts", Boolean(contentOverview?.data?.counts && contentOverview.data.counts.courses >= 1 && contentOverview.data.counts.exams >= 1), JSON.stringify(contentOverview?.data?.counts));
   const consultancyCourses = await checkApi("Consultancy", "Course list (scoped)", "/consultancy/courses?limit=100", token("consultancy"));

@@ -25,6 +25,7 @@ router.use(authenticate, authorize("CONSULTANCY"));
 
 router.get("/overview", consultancy.overview);
 router.get("/subscription", consultancy.subscription);
+router.get("/subscription/invoice/:index", consultancy.invoice);
 router.get("/content/overview", consultancy.contentOverview);
 router.get("/courses", consultancy.listCourses);
 router.get("/exams", consultancy.listExams);

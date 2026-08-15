@@ -145,6 +145,15 @@ export const subscription = asyncHandler(async (req: Request, res: Response) => 
   res.json({ success: true, message: "Subscription", data: { consultancy, packages: packages.data } });
 });
 
+export const invoice = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.user) throw new ApiError(401, "Authentication required");
+  const consultancyId = consultancyIdOf(req);
+  const entryIndex = Number(req.params.index);
+  if (!Number.isInteger(entryIndex) || entryIndex < 0) throw new ApiError(400, "Invalid ledger index");
+  const invoice = await consultancyService.generateInvoice(consultancyId, entryIndex, req.user, req.ip || null);
+  res.json({ success: true, message: "Invoice generated", data: invoice });
+});
+
 export const assignStudentTeacher = asyncHandler(async (req: Request, res: Response) => {
   if (!req.user) throw new ApiError(401, "Authentication required");
   const consultancyId = consultancyIdOf(req);

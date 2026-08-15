@@ -237,6 +237,14 @@ export const listSubscriptions = asyncHandler(async (_req: Request, res: Respons
   res.json({ success: true, message: "Subscriptions", data });
 });
 
+export const invoice = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.user) throw new ApiError(401, "Authentication required");
+  const entryIndex = Number(req.params.index);
+  if (!Number.isInteger(entryIndex) || entryIndex < 0) throw new ApiError(400, "Invalid ledger index");
+  const invoice = await consultancyService.generateInvoice(String(req.params.id), entryIndex, req.user, req.ip || null);
+  res.json({ success: true, message: "Invoice generated", data: invoice });
+});
+
 function queryOf(req: Request): Record<string, string> {
   return {
     page: String(req.query.page || 1),

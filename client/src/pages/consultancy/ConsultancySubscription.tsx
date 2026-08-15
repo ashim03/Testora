@@ -1,9 +1,12 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { CheckCircle2, Ban, Users, UserCog, Clock } from "lucide-react";
+import { CheckCircle2, Ban, Users, UserCog, Clock, FileText } from "lucide-react";
 import { apiGet } from "../../api/client";
 import { Card, CardContent } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
+import { Button } from "../../components/ui/button";
 import { ErrorState, PageSpinner, EmptyState } from "../../components/ui/feedback";
+import { InvoiceDialog } from "../../components/shared/InvoiceDialog";
 import { formatDateTime } from "../../utils";
 
 interface Package {
@@ -29,6 +32,7 @@ interface Consultancy {
   teacherCount: number;
   daysLeft: number;
   ledger?: Array<{
+    index: number;
     packageName: string;
     price: number;
     currency: string;
@@ -43,6 +47,7 @@ interface Consultancy {
 }
 
 export function ConsultancySubscription() {
+  const [invoiceIndex, setInvoiceIndex] = useState<number | null>(null);
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["consultancy", "subscription"],
     queryFn: async () => {
@@ -143,6 +148,7 @@ export function ConsultancySubscription() {
                       <th className="px-4 py-2.5 font-medium">Period</th>
                       <th className="px-4 py-2.5 font-medium">Seats</th>
                       <th className="px-4 py-2.5 font-medium">Assigned</th>
+                      <th className="px-4 py-2.5 font-medium"></th>
                     </tr>
                   </thead>
                   <tbody className="divide-y">
@@ -155,6 +161,11 @@ export function ConsultancySubscription() {
                         </td>
                         <td className="px-4 py-2.5 text-muted-foreground">{entry.studentLimit} students · {entry.teacherLimit} teachers</td>
                         <td className="px-4 py-2.5 text-muted-foreground">{formatDateTime(entry.assignedAt)}</td>
+                        <td className="px-4 py-2.5 text-right">
+                          <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setInvoiceIndex(entry.index)}>
+                            <FileText className="size-3.5" /> Invoice
+                          </Button>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -164,6 +175,12 @@ export function ConsultancySubscription() {
           </Card>
         </div>
       )}
+
+      <InvoiceDialog
+        open={invoiceIndex !== null}
+        onOpenChange={(o) => { if (!o) setInvoiceIndex(null); }}
+        url={invoiceIndex !== null ? `/consultancy/subscription/invoice/${invoiceIndex}` : ""}
+      />
     </div>
   );
 }

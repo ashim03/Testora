@@ -73,5 +73,6 @@ router.post("/subscription-packages", validateRequest(createSubscriptionPackageS
 router.patch("/subscription-packages/:id", validateRequest(updateSubscriptionPackageSchema as never), admin.updateSubscriptionPackage);
 router.delete("/subscription-packages/:id", admin.deleteSubscriptionPackage);
 router.get("/subscriptions", admin.listSubscriptions);
+router.get("/consultancies/:id/invoice/:index", admin.invoice);
 
 export default router;

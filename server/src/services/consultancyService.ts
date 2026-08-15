@@ -81,7 +81,8 @@ async function consultancyWithCounts(c: Record<string, any>) {
       ? Math.max(0, Math.ceil((new Date(c.subscriptionEndDate).getTime() - now) / DAY_MS))
       : 0,
     createdAt: c.createdAt,
-    ledger: (c.subscriptionLedger || []).map((entry: any) => ({
+    ledger: (c.subscriptionLedger || []).map((entry: any, index: number) => ({
+      index,
       packageName: entry.packageName,
       price: entry.price,
       currency: entry.currency,
@@ -383,6 +384,62 @@ export async function listSubscriptions() {
   const data = [];
   for (const r of rows) data.push(await consultancyWithCounts(r));
   return data;
+}
+
+export async function generateInvoice(
+  consultancyId: string,
+  entryIndex: number,
+  actor: { id: string; role: string },
+  ip?: string | null,
+) {
+  const c = await Consultancy.findOne({ _id: consultancyId, deletedAt: null });
+  if (!c) throw new ApiError(404, "Consultancy not found");
+  const entries = c.subscriptionLedger || [];
+  const entry = entries[entryIndex];
+  if (!entry) throw new ApiError(404, "Ledger entry not found");
+
+  const seq = entryIndex + 1;
+  const year = new Date(entry.assignedAt || new Date()).getUTCFullYear();
+  const invoiceNo = `INV-${year}-${c.code}-${String(seq).padStart(4, "0")}`;
+  const issuedAt = new Date();
+  const dueAt = new Date(issuedAt.getTime() + 15 * DAY_MS);
+
+  const total = entry.price;
+  const invoice = {
+    invoiceNo,
+    consultancyId: String(c._id),
+    consultancyName: c.name,
+    consultancyCode: c.code,
+    contactName: c.contactName ?? null,
+    contactEmail: c.contactEmail ?? null,
+    contactPhone: c.contactPhone ?? null,
+    address: c.address ?? null,
+    packageName: entry.packageName,
+    price: entry.price,
+    currency: entry.currency,
+    durationDays: entry.durationDays,
+    studentLimit: entry.studentLimit,
+    teacherLimit: entry.teacherLimit,
+    startDate: entry.startDate,
+    endDate: entry.endDate,
+    assignedAt: entry.assignedAt,
+    note: entry.note ?? null,
+    total,
+    issuedAt,
+    dueAt,
+    generatedBy: actor.id,
+  };
+
+  await audit("GENERATE_INVOICE", {
+    actorId: actor.id,
+    actorRole: actor.role,
+    entityType: "Consultancy",
+    entityId: String(c._id),
+    after: { invoiceNo, packageName: entry.packageName, amount: total, currency: entry.currency },
+  });
+  await logActivity(actor.id, "GENERATE_INVOICE", "Consultancy", c._id, { invoiceNo, amount: total, currency: entry.currency }, ip);
+
+  return invoice;
 }
 
 export async function getConsultancyByUserId(userId: string) {
