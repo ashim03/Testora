@@ -1,6 +1,21 @@
 import mongoose, { type Types, type Document, type Model } from "mongoose";
 import { CONSULTANCY_SUBSCRIPTION_STATUSES } from "@testora-platform/shared";
 
+export interface IConsultancySubscriptionLedger {
+  packageId?: Types.ObjectId | null;
+  packageName: string;
+  price: number;
+  currency: string;
+  durationDays: number;
+  studentLimit: number;
+  teacherLimit: number;
+  startDate: Date;
+  endDate: Date;
+  assignedBy?: Types.ObjectId | null;
+  assignedAt: Date;
+  note?: string | null;
+}
+
 export interface IConsultancy extends Document {
   name: string;
   code: string;
@@ -15,6 +30,7 @@ export interface IConsultancy extends Document {
   subscriptionEndDate?: Date | null;
   studentLimit?: number | null;
   teacherLimit?: number | null;
+  subscriptionLedger: IConsultancySubscriptionLedger[];
   createdBy?: Types.ObjectId | null;
   deletedAt?: Date | null;
   createdAt: Date;
@@ -41,6 +57,25 @@ const schema = new mongoose.Schema(
     subscriptionEndDate: { type: Date, default: null },
     studentLimit: { type: Number, default: null },
     teacherLimit: { type: Number, default: null },
+    subscriptionLedger: {
+      type: [
+        {
+          packageId: { type: mongoose.Schema.Types.ObjectId, ref: "SubscriptionPackage", default: null },
+          packageName: { type: String, required: true },
+          price: { type: Number, required: true },
+          currency: { type: String, default: "NPR" },
+          durationDays: { type: Number, required: true },
+          studentLimit: { type: Number, required: true },
+          teacherLimit: { type: Number, required: true },
+          startDate: { type: Date, required: true },
+          endDate: { type: Date, required: true },
+          assignedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
+          assignedAt: { type: Date, default: () => new Date() },
+          note: { type: String, maxlength: 300, default: null },
+        },
+      ],
+      default: [],
+    },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
     deletedAt: { type: Date, default: null },
   },

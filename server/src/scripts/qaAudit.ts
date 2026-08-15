@@ -132,6 +132,8 @@ async function main(): Promise<void> {
   const consultancyStudents = await checkApi("Consultancy", "Student list (scoped)", "/consultancy/students?limit=100", token("consultancy"));
   record("Consultancy", "Consultancy student list scoped", (dataRows(consultancyStudents) as any[]).length >= 2, `${dataRows(consultancyStudents).length} rows`);
   await checkApi("Consultancy", "Subscription view", "/consultancy/subscription", token("consultancy"));
+  const consultancySub = await checkApi("Consultancy", "Subscription view (ledger)", "/consultancy/subscription", token("consultancy"));
+  record("Consultancy", "Billing ledger recorded", Boolean(consultancySub?.data?.consultancy?.ledger?.length), JSON.stringify(consultancySub?.data?.consultancy?.ledger?.length));
   const contentOverview = await checkApi("Consultancy", "Content overview", "/consultancy/content/overview", token("consultancy"));
   record("Consultancy", "Content overview counts", Boolean(contentOverview?.data?.counts && contentOverview.data.counts.courses >= 1 && contentOverview.data.counts.exams >= 1), JSON.stringify(contentOverview?.data?.counts));
   const consultancyCourses = await checkApi("Consultancy", "Course list (scoped)", "/consultancy/courses?limit=100", token("consultancy"));

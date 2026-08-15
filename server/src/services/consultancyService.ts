@@ -81,6 +81,18 @@ async function consultancyWithCounts(c: Record<string, any>) {
       ? Math.max(0, Math.ceil((new Date(c.subscriptionEndDate).getTime() - now) / DAY_MS))
       : 0,
     createdAt: c.createdAt,
+    ledger: (c.subscriptionLedger || []).map((entry: any) => ({
+      packageName: entry.packageName,
+      price: entry.price,
+      currency: entry.currency,
+      durationDays: entry.durationDays,
+      studentLimit: entry.studentLimit,
+      teacherLimit: entry.teacherLimit,
+      startDate: entry.startDate,
+      endDate: entry.endDate,
+      assignedAt: entry.assignedAt,
+      note: entry.note ?? null,
+    })),
   };
 }
 
@@ -326,6 +338,19 @@ export async function assignPackageToConsultancy(consultancyId: string, packageI
   c.subscriptionEndDate = end;
   c.studentLimit = pkg.studentLimit;
   c.teacherLimit = pkg.teacherLimit;
+  c.subscriptionLedger.push({
+    packageId: pkg._id as any,
+    packageName: pkg.name,
+    price: pkg.price,
+    currency: pkg.currency,
+    durationDays: pkg.durationDays,
+    studentLimit: pkg.studentLimit,
+    teacherLimit: pkg.teacherLimit,
+    startDate: start,
+    endDate: end,
+    assignedBy: actor?.id ? (new Types.ObjectId(actor.id) as any) : null,
+    assignedAt: new Date(),
+  });
   await c.save();
 
   const account = await User.findOne({ consultancyId: c._id, role: "CONSULTANCY" });

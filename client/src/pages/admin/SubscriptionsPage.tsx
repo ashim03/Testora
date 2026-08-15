@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { CheckCircle2, Ban } from "lucide-react";
+import { CheckCircle2, Ban, History } from "lucide-react";
 import { apiGet, apiPost } from "../../api/client";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent } from "../../components/ui/card";
@@ -22,6 +22,19 @@ interface Package {
   active: boolean;
 }
 
+interface LedgerEntry {
+  packageName: string;
+  price: number;
+  currency: string;
+  durationDays: number;
+  studentLimit: number;
+  teacherLimit: number;
+  startDate: string;
+  endDate: string;
+  assignedAt: string;
+  note?: string | null;
+}
+
 interface Consultancy {
   id: string;
   name: string;
@@ -35,12 +48,14 @@ interface Consultancy {
   teacherLimit?: number | null;
   studentCount: number;
   teacherCount: number;
+  ledger?: LedgerEntry[];
 }
 
 export function SubscriptionsPage() {
   const qc = useQueryClient();
   const [assignTarget, setAssignTarget] = useState<Consultancy | null>(null);
   const [selectedPackage, setSelectedPackage] = useState("");
+  const [historyTarget, setHistoryTarget] = useState<Consultancy | null>(null);
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["admin", "subscriptions"],
@@ -114,9 +129,14 @@ export function SubscriptionsPage() {
                     </TableCell>
                     <TableCell className="text-muted-foreground">{c.subscriptionEndDate ? formatDateTime(c.subscriptionEndDate) : "-"}</TableCell>
                     <TableCell className="text-right">
-                      <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => { setAssignTarget(c); setSelectedPackage(c.package?.id ?? ""); }}>
-                        {c.subscriptionStatus === "ACTIVE" ? "Renew / change" : "Assign package"}
-                      </Button>
+                      <div className="flex items-center justify-end gap-1.5">
+                        <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setHistoryTarget(c)}>
+                          <History className="size-3.5" /> History
+                        </Button>
+                        <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => { setAssignTarget(c); setSelectedPackage(c.package?.id ?? ""); }}>
+                          {c.subscriptionStatus === "ACTIVE" ? "Renew / change" : "Assign package"}
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -168,6 +188,44 @@ export function SubscriptionsPage() {
               Activate subscription
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!historyTarget} onOpenChange={(o) => { if (!o) setHistoryTarget(null); }}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Billing history — {historyTarget?.name}</DialogTitle>
+          </DialogHeader>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Package</TableHead>
+                  <TableHead>Amount</TableHead>
+                  <TableHead>Period</TableHead>
+                  <TableHead>Seats</TableHead>
+                  <TableHead>Assigned</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {(!historyTarget?.ledger || historyTarget.ledger.length === 0) ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="py-6 text-center text-sm text-muted-foreground">No billing history yet.</TableCell>
+                  </TableRow>
+                ) : (
+                  [...historyTarget.ledger].reverse().map((entry, idx) => (
+                    <TableRow key={`${entry.packageName}-${idx}`}>
+                      <TableCell className="font-medium">{entry.packageName}</TableCell>
+                      <TableCell>{entry.price.toLocaleString()} {entry.currency}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{formatDateTime(entry.startDate)} — {formatDateTime(entry.endDate)}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{entry.studentLimit} students · {entry.teacherLimit} teachers</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{formatDateTime(entry.assignedAt)}</TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

@@ -2,7 +2,9 @@
 
 A production-ready, monorepo web platform for IELTS and PTE test preparation and assessment.
 It handles registered users, exam authoring, secure timed attempts, automatic and manual grading,
-results, analytics, and role-based dashboards for **Super Admins**, **Teachers**, and **Students**.
+results, analytics, and role-based dashboards for **Super Admins**, **Consultancies**, **Teachers**, and
+**Students**. Consultancies subscribe (NPR) to packages that cap their teacher/student capacity; students
+use the platform through their consultancy at no direct cost.
 
 > **Important:** All scores produced by this platform are **practice estimates only** and are
 > **not** official IELTS or PTE results. The UI labels them as:
@@ -71,6 +73,8 @@ npm install
 npm run build          # builds shared, server, and client
 npm run seed           # create demo data (admin/teacher/students/exams)
 # npm run seed:reset  # drops the database first, then seeds
+npm run seed:qa -w server    # QA multi-tenant fixtures + consultancy subscription
+npm run qa:audit -w server   # run the 95-check end-to-end QA audit
 ```
 
 ### 3. Run in development
@@ -81,11 +85,13 @@ Open http://localhost:5173
 
 ## Demo Accounts
 
-| Role     | Email                     | Password       |
-|----------|---------------------------|----------------|
-| Admin    | `admin@example.com`       | `Admin@12345`  |
-| Teacher  | `teacher@example.com`     | `Teacher@12345`|
-| Student  | `student@example.com`     | `Student@12345`|
+| Role        | Email                     | Password       |
+|-------------|---------------------------|----------------|
+| Super Admin | `qa.admin@test.com`       | `QaTest@12345` |
+| Consultancy | `qa.consultancy@test.com` | `QaTest@12345` |
+| Teacher     | `qa.teacher@test.com`     | `QaTest@12345` |
+| Student     | `ielts.student@test.com`  | `QaTest@12345` |
+| Student     | `pte.student@test.com`    | `QaTest@12345` |
 
 ## Common scripts
 
@@ -113,7 +119,7 @@ See `server/.env.example` for the full commented list. Required at startup:
 - Passwords hashed with bcrypt (no plaintext ever stored or logged).
 - Login/token/submit endpoints protected by rate limiting.
 - Helmet security headers, CORS allow-list, request sanitization.
-- RBAC: routes enforce role permissions; teachers can only access their own students/exams.
+- RBAC: routes enforce role permissions; consultancies only see their own tenants; teachers can only access their own students/exams.
 - Deliberate **practice-score disclaimers** and field labeling to avoid implying official results.
 
 ## Notes

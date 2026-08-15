@@ -28,6 +28,18 @@ interface Consultancy {
   studentCount: number;
   teacherCount: number;
   daysLeft: number;
+  ledger?: Array<{
+    packageName: string;
+    price: number;
+    currency: string;
+    durationDays: number;
+    studentLimit: number;
+    teacherLimit: number;
+    startDate: string;
+    endDate: string;
+    assignedAt: string;
+    note?: string | null;
+  }>;
 }
 
 export function ConsultancySubscription() {
@@ -116,6 +128,42 @@ export function ConsultancySubscription() {
           )}
         </div>
       </div>
+
+      {c.ledger && c.ledger.length > 0 && (
+        <div>
+          <h2 className="mb-3 text-sm font-semibold text-muted-foreground">Billing history</h2>
+          <Card>
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b text-left text-xs uppercase tracking-wide text-muted-foreground">
+                      <th className="px-4 py-2.5 font-medium">Package</th>
+                      <th className="px-4 py-2.5 font-medium">Amount</th>
+                      <th className="px-4 py-2.5 font-medium">Period</th>
+                      <th className="px-4 py-2.5 font-medium">Seats</th>
+                      <th className="px-4 py-2.5 font-medium">Assigned</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {[...c.ledger].reverse().map((entry, idx) => (
+                      <tr key={`${entry.packageName}-${idx}`}>
+                        <td className="px-4 py-2.5 font-medium">{entry.packageName}</td>
+                        <td className="px-4 py-2.5">{entry.price.toLocaleString()} {entry.currency}</td>
+                        <td className="px-4 py-2.5 text-muted-foreground">
+                          {formatDateTime(entry.startDate)} — {formatDateTime(entry.endDate)}
+                        </td>
+                        <td className="px-4 py-2.5 text-muted-foreground">{entry.studentLimit} students · {entry.teacherLimit} teachers</td>
+                        <td className="px-4 py-2.5 text-muted-foreground">{formatDateTime(entry.assignedAt)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }
