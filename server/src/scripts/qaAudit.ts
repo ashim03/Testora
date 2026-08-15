@@ -132,6 +132,12 @@ async function main(): Promise<void> {
   const consultancyStudents = await checkApi("Consultancy", "Student list (scoped)", "/consultancy/students?limit=100", token("consultancy"));
   record("Consultancy", "Consultancy student list scoped", (dataRows(consultancyStudents) as any[]).length >= 2, `${dataRows(consultancyStudents).length} rows`);
   await checkApi("Consultancy", "Subscription view", "/consultancy/subscription", token("consultancy"));
+  const contentOverview = await checkApi("Consultancy", "Content overview", "/consultancy/content/overview", token("consultancy"));
+  record("Consultancy", "Content overview counts", Boolean(contentOverview?.data?.counts && contentOverview.data.counts.courses >= 1 && contentOverview.data.counts.exams >= 1), JSON.stringify(contentOverview?.data?.counts));
+  const consultancyCourses = await checkApi("Consultancy", "Course list (scoped)", "/consultancy/courses?limit=100", token("consultancy"));
+  record("Consultancy", "Consultancy sees teacher courses", (dataRows(consultancyCourses) as any[]).some((c) => String(c.name).startsWith("[QA]")), `${dataRows(consultancyCourses).length} rows`);
+  const consultancyExams = await checkApi("Consultancy", "Exam list (scoped)", "/consultancy/exams?limit=100", token("consultancy"));
+  record("Consultancy", "Consultancy sees teacher exams", (dataRows(consultancyExams) as any[]).some((e) => String(e.title).startsWith("[QA]")), `${dataRows(consultancyExams).length} rows`);
 
   await checkApi("Admin", "Dashboard", "/admin/dashboard", token("admin"));
   const adminBatches = await checkApi("Admin", "Batch overview", "/admin/batches", token("admin"));

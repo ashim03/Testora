@@ -14,7 +14,6 @@ export { ExamAttempt, ExamAnswer } from "./ExamAttempt";
 export { Assignment, AssignmentSubmission, Rubric } from "./Assignment";
 export { Grade, Feedback } from "./Grade";
 export { Result } from "./Result";
-export { Subscription } from "./Subscription";
 export { Branding } from "./Branding";
 export { Notification, ActivityLog, AuditLog } from "./Notification";
 export { RefreshToken, PasswordResetToken, SystemSetting } from "./Token";

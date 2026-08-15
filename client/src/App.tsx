@@ -29,6 +29,8 @@ const ConsultancyDashboard = lazy(() => import("./pages/consultancy/ConsultancyD
 const ConsultancyTeachers = lazy(() => import("./pages/consultancy/ConsultancyTeachers").then((m) => ({ default: m.ConsultancyTeachers })));
 const ConsultancyStudents = lazy(() => import("./pages/consultancy/ConsultancyStudents").then((m) => ({ default: m.ConsultancyStudents })));
 const ConsultancySubscription = lazy(() => import("./pages/consultancy/ConsultancySubscription").then((m) => ({ default: m.ConsultancySubscription })));
+const ConsultancyCourses = lazy(() => import("./pages/consultancy/ConsultancyCourses").then((m) => ({ default: m.ConsultancyCourses })));
+const ConsultancyExams = lazy(() => import("./pages/consultancy/ConsultancyExams").then((m) => ({ default: m.ConsultancyExams })));
 
 const TeacherDashboard = lazy(() => import("./pages/teacher/TeacherDashboard").then((m) => ({ default: m.TeacherDashboard })));
 const TeacherCourses = lazy(() => import("./pages/teacher/TeacherCourses").then((m) => ({ default: m.TeacherCourses })));
@@ -58,7 +60,6 @@ const SettingsPage = lazy(() => import("./pages/account/SettingsPage").then((m) 
 const NotificationsPage = lazy(() => import("./pages/account/NotificationsPage").then((m) => ({ default: m.NotificationsPage })));
 const SearchPage = lazy(() => import("./pages/account/SearchPage").then((m) => ({ default: m.SearchPage })));
 const ChatPage = lazy(() => import("./pages/account/ChatPage").then((m) => ({ default: m.ChatPage })));
-const StudentSubscription = lazy(() => import("./pages/student/StudentSubscription").then((m) => ({ default: m.StudentSubscription })));
 const ExamAttemptPage = lazy(() => import("./pages/student/ExamAttemptPage").then((m) => ({ default: m.ExamAttemptPage })));
 
 const UnauthorizedPage = lazy(() => import("./pages/UnauthorizedPage").then((m) => ({ default: m.UnauthorizedPage })));
@@ -133,6 +134,8 @@ export function App() {
         <Route path="/consultancy/teachers" element={withLayout("CONSULTANCY", <ConsultancyTeachers />)} />
         <Route path="/consultancy/students" element={withLayout("CONSULTANCY", <ConsultancyStudents />)} />
         <Route path="/consultancy/subscription" element={withLayout("CONSULTANCY", <ConsultancySubscription />)} />
+        <Route path="/consultancy/courses" element={withLayout("CONSULTANCY", <ConsultancyCourses />)} />
+        <Route path="/consultancy/exams" element={withLayout("CONSULTANCY", <ConsultancyExams />)} />
         <Route path="/consultancy/profile" element={withLayout("CONSULTANCY", <ProfilePage />)} />
         <Route path="/consultancy/settings" element={withLayout("CONSULTANCY", <SettingsPage />)} />
         <Route path="/consultancy/notifications" element={withLayout("CONSULTANCY", <NotificationsPage />)} />
@@ -151,7 +154,6 @@ export function App() {
         <Route path="/student/notifications" element={withLayout("STUDENT", <StudentNotifications />)} />
         <Route path="/student/profile" element={withLayout("STUDENT", <ProfilePage />)} />
         <Route path="/student/settings" element={withLayout("STUDENT", <SettingsPage />)} />
-        <Route path="/student/subscription" element={withLayout("STUDENT", <StudentSubscription />)} />
         <Route path="/student/chat" element={withLayout("STUDENT", <ChatPage />)} />
         <Route path="/student/exam/:attemptId" element={withLayout("STUDENT", <ExamAttemptPage />)} />
 

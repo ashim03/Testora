@@ -47,7 +47,10 @@ function extFor(filename: string, mimeType: string): string {
 }
 
 function audioDir(): string {
-  const dir = path.resolve(process.cwd(), config.uploadsDir, "audio");
+  const uploadsRoot = path.isAbsolute(config.uploadsDir)
+    ? config.uploadsDir
+    : path.resolve(__dirname, "..", "..", "uploads");
+  const dir = path.join(uploadsRoot, "audio");
   fs.mkdirSync(dir, { recursive: true });
   return dir;
 }

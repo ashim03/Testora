@@ -107,7 +107,6 @@ const studentNav: NavGroup[] = [
     items: [
       { label: "Messages", to: "/student/chat", icon: MessageSquare },
       { label: "Notifications", to: "/student/notifications", icon: Bell },
-      { label: "Subscription", to: "/student/subscription", icon: CreditCard },
       { label: "Profile", to: "/student/profile", icon: User },
     ],
   },
@@ -121,6 +120,13 @@ const consultancyNav: NavGroup[] = [
       { label: "Teachers", to: "/consultancy/teachers", icon: UserCog },
       { label: "Students", to: "/consultancy/students", icon: Users },
       { label: "Subscription", to: "/consultancy/subscription", icon: CreditCard },
+    ],
+  },
+  {
+    label: "Content",
+    items: [
+      { label: "Courses", to: "/consultancy/courses", icon: BookOpen },
+      { label: "Tests", to: "/consultancy/exams", icon: FileText },
     ],
   },
   {

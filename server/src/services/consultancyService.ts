@@ -8,6 +8,8 @@ import {
   StudentProfile,
   TeacherStudentAssignment,
   Batch,
+  Course,
+  Exam,
 } from "../models";
 import { hashPassword } from "../utils/tokens";
 import { ApiError, parseSort } from "../utils/helpers";
@@ -511,3 +513,108 @@ function formatPackage(pkg: Record<string, any>): Record<string, unknown> {
 }
 
 export const formatConsultancyWithCounts = consultancyWithCounts;
+
+async function teacherIdsOfConsultancy(consultancyId: string): Promise<Types.ObjectId[]> {
+  const teachers = await User.find({ consultancyId: new Types.ObjectId(consultancyId), role: "TEACHER", deletedAt: null })
+    .select("_id")
+    .lean();
+  return teachers.map((t) => t._id);
+}
+
+export async function listConsultancyCourses(
+  consultancyId: string,
+  query: { page?: string | number; limit?: string | number; search?: string; type?: string; active?: string },
+) {
+  const page = Number(query.page || 1);
+  const limit = Number(query.limit || 10);
+  const teacherIds = await teacherIdsOfConsultancy(consultancyId);
+  if (!teacherIds.length) return { data: [], total: 0, page, limit, pages: 0 };
+  const filter: Record<string, unknown> = { instructorId: { $in: teacherIds }, deletedAt: null };
+  if (query.type) filter.type = query.type;
+  if (query.active === "true") filter.active = true;
+  if (query.active === "false") filter.active = false;
+  if (query.search) {
+    const re = new RegExp(query.search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
+    filter.name = re;
+  }
+  const total = await Course.countDocuments(filter);
+  const data = await Course.find(filter)
+    .sort({ createdAt: -1 })
+    .skip((page - 1) * limit)
+    .limit(limit)
+    .populate("instructorId", "firstName lastName email")
+    .lean();
+  return { data, total, page, limit, pages: Math.ceil(total / limit) };
+}
+
+export async function listConsultancyExams(
+  consultancyId: string,
+  query: { page?: string | number; limit?: string | number; search?: string; type?: string; category?: string; status?: string },
+) {
+  const page = Number(query.page || 1);
+  const limit = Number(query.limit || 10);
+  const teacherIds = await teacherIdsOfConsultancy(consultancyId);
+  if (!teacherIds.length) return { data: [], total: 0, page, limit, pages: 0 };
+  const filter: Record<string, unknown> = { createdBy: { $in: teacherIds }, deletedAt: null };
+  if (query.type) filter.type = query.type;
+  if (query.category) filter.category = query.category;
+  if (query.status) filter.status = query.status;
+  if (query.search) {
+    const re = new RegExp(query.search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
+    filter.title = re;
+  }
+  const total = await Exam.countDocuments(filter);
+  const data = await Exam.find(filter)
+    .sort({ createdAt: -1 })
+    .skip((page - 1) * limit)
+    .limit(limit)
+    .populate("createdBy", "firstName lastName email")
+    .lean();
+  return { data, total, page, limit, pages: Math.ceil(total / limit) };
+}
+
+export async function consultancyContentOverview(consultancyId: string) {
+  const teacherIds = await teacherIdsOfConsultancy(consultancyId);
+  if (!teacherIds.length) {
+    return {
+      counts: { teachers: 0, students: 0, courses: 0, activeCourses: 0, exams: 0, mockTests: 0, practiceTests: 0 },
+      recentCourses: [],
+      recentExams: [],
+    };
+  }
+  const teacherFilter = { $in: teacherIds };
+  const [teachers, students, courses, activeCourses, exams, mockTests, practiceTests, recentCourses, recentExams] = await Promise.all([
+    User.countDocuments({ consultancyId: new Types.ObjectId(consultancyId), role: "TEACHER", deletedAt: null }),
+    User.countDocuments({ consultancyId: new Types.ObjectId(consultancyId), role: "STUDENT", deletedAt: null }),
+    Course.countDocuments({ instructorId: teacherFilter, deletedAt: null }),
+    Course.countDocuments({ instructorId: teacherFilter, deletedAt: null, active: true }),
+    Exam.countDocuments({ createdBy: teacherFilter, deletedAt: null }),
+    Exam.countDocuments({ createdBy: teacherFilter, deletedAt: null, type: "MOCK" }),
+    Exam.countDocuments({ createdBy: teacherFilter, deletedAt: null, type: { $in: ["PRACTICE", "SECTIONAL"] } }),
+    Course.find({ instructorId: teacherFilter, deletedAt: null })
+      .sort({ createdAt: -1 })
+      .limit(5)
+      .select("name type code active instructorId createdAt")
+      .populate("instructorId", "firstName lastName")
+      .lean(),
+    Exam.find({ createdBy: teacherFilter, deletedAt: null })
+      .sort({ createdAt: -1 })
+      .limit(5)
+      .select("title category type status durationSec createdBy createdAt")
+      .populate("createdBy", "firstName lastName")
+      .lean(),
+  ]);
+  return {
+    counts: {
+      teachers,
+      students,
+      courses,
+      activeCourses,
+      exams,
+      mockTests,
+      practiceTests,
+    },
+    recentCourses,
+    recentExams,
+  };
+}

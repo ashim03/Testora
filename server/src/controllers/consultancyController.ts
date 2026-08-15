@@ -167,3 +167,33 @@ export const teacherList = asyncHandler(async (req: Request, res: Response) => {
   });
   res.json({ success: true, message: "Teachers", data: { teachers: teachers.data, totalActiveAssignments: assignments } });
 });
+
+export const contentOverview = asyncHandler(async (req: Request, res: Response) => {
+  const data = await consultancyService.consultancyContentOverview(consultancyIdOf(req));
+  res.json({ success: true, message: "Content overview", data });
+});
+
+export const listCourses = asyncHandler(async (req: Request, res: Response) => {
+  const result = await consultancyService.listConsultancyCourses(consultancyIdOf(req), {
+    page: String(req.query.page || ""),
+    limit: String(req.query.limit || ""),
+    search: String(req.query.search || ""),
+    type: String(req.query.type || ""),
+    active: String(req.query.active || ""),
+  });
+  const d = result as { data: unknown; total: number; page: number; limit: number; pages: number };
+  res.json({ success: true, message: "Courses", data: d.data, pagination: { page: d.page, limit: d.limit, total: d.total, pages: d.pages } });
+});
+
+export const listExams = asyncHandler(async (req: Request, res: Response) => {
+  const result = await consultancyService.listConsultancyExams(consultancyIdOf(req), {
+    page: String(req.query.page || ""),
+    limit: String(req.query.limit || ""),
+    search: String(req.query.search || ""),
+    type: String(req.query.type || ""),
+    category: String(req.query.category || ""),
+    status: String(req.query.status || ""),
+  });
+  const d = result as { data: unknown; total: number; page: number; limit: number; pages: number };
+  res.json({ success: true, message: "Exams", data: d.data, pagination: { page: d.page, limit: d.limit, total: d.total, pages: d.pages } });
+});

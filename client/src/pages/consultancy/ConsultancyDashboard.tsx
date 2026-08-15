@@ -1,11 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-import { Users, UserCog, CheckCircle2, Ban } from "lucide-react";
+import { Users, UserCog, CheckCircle2, Ban, BookOpen, FileText, PenSquare } from "lucide-react";
 import { apiGet } from "../../api/client";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
 import { ErrorState, PageSpinner } from "../../components/ui/feedback";
 import { Button } from "../../components/ui/button";
+import { titleCase } from "../../utils";
 
 interface ConsultancyData {
   id: string;
@@ -29,16 +30,29 @@ interface Overview {
   recentStudents: Array<{ id: string; firstName: string; lastName: string; email: string }>;
 }
 
+interface ContentOverview {
+  counts: { teachers: number; students: number; courses: number; activeCourses: number; exams: number; mockTests: number; practiceTests: number };
+  recentCourses: Array<{ _id: string; name: string; type: string; active?: boolean; instructorId?: { firstName?: string; lastName?: string } | string | null }>;
+  recentExams: Array<{ _id: string; title: string; category: string; status: string; createdBy?: { firstName?: string; lastName?: string } | string | null }>;
+}
+
 export function ConsultancyDashboard() {
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["consultancy", "overview"],
     queryFn: async () => (await apiGet<Overview>("/consultancy/overview")).data,
   });
 
+  const contentQuery = useQuery({
+    queryKey: ["consultancy", "content", "overview"],
+    queryFn: async () => (await apiGet<ContentOverview>("/consultancy/content/overview")).data,
+  });
+
   if (isLoading) return <PageSpinner />;
   if (isError || !data) return <ErrorState message={error instanceof Error ? error.message : undefined} />;
 
   const c = data.consultancy;
+  const content = contentQuery.data;
+  const cc = content?.counts;
 
   return (
     <div className="space-y-6">
@@ -90,6 +104,40 @@ export function ConsultancyDashboard() {
         </Card>
       </div>
 
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Link to="/consultancy/courses">
+          <Card className="transition-all hover:-translate-y-0.5 hover:shadow-card-hover">
+            <CardContent className="flex items-center gap-4 p-4">
+              <div className="rounded-md bg-muted p-2.5 text-brand-600"><BookOpen className="size-5" /></div>
+              <div>
+                <div className="text-2xl font-bold leading-none">{cc?.courses ?? "—"}</div>
+                <div className="text-xs text-muted-foreground">Courses</div>
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+        <Link to="/consultancy/exams">
+          <Card className="transition-all hover:-translate-y-0.5 hover:shadow-card-hover">
+            <CardContent className="flex items-center gap-4 p-4">
+              <div className="rounded-md bg-muted p-2.5 text-violet-600"><FileText className="size-5" /></div>
+              <div>
+                <div className="text-2xl font-bold leading-none">{cc?.exams ?? "—"}</div>
+                <div className="text-xs text-muted-foreground">Exams</div>
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+        <Card>
+          <CardContent className="flex items-center gap-4 p-4">
+            <div className="rounded-md bg-muted p-2.5 text-accent-700"><PenSquare className="size-5" /></div>
+            <div>
+              <div className="text-2xl font-bold leading-none">{cc?.practiceTests ?? "—"}</div>
+              <div className="text-xs text-muted-foreground">Practice tests</div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between border-b">
@@ -125,6 +173,57 @@ export function ConsultancyDashboard() {
                   <li key={s.id} className="flex items-center justify-between px-4 py-2.5 text-sm">
                     <span className="font-medium">{s.firstName} {s.lastName}</span>
                     <span className="text-xs text-muted-foreground">{s.email}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between border-b">
+            <CardTitle>Recent courses</CardTitle>
+            <Button asChild variant="ghost" size="sm" className="h-7 text-xs"><Link to="/consultancy/courses">View all</Link></Button>
+          </CardHeader>
+          <CardContent className="p-0">
+            {!content || content.recentCourses.length === 0 ? (
+              <p className="p-4 text-sm text-muted-foreground">Your teachers haven't published courses yet.</p>
+            ) : (
+              <ul className="divide-y">
+                {content.recentCourses.map((cr) => (
+                  <li key={cr._id} className="flex items-center justify-between px-4 py-2.5 text-sm">
+                    <div className="min-w-0">
+                      <p className="truncate font-medium">{cr.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {cr.type} · {typeof cr.instructorId === "object" && cr.instructorId ? [cr.instructorId.firstName, cr.instructorId.lastName].filter(Boolean).join(" ") || "—" : "—"}
+                      </p>
+                    </div>
+                    <Badge variant={cr.active === false ? "destructive" : "success"}>{cr.active === false ? "Inactive" : "Active"}</Badge>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between border-b">
+            <CardTitle>Recent tests</CardTitle>
+            <Button asChild variant="ghost" size="sm" className="h-7 text-xs"><Link to="/consultancy/exams">View all</Link></Button>
+          </CardHeader>
+          <CardContent className="p-0">
+            {!content || content.recentExams.length === 0 ? (
+              <p className="p-4 text-sm text-muted-foreground">Your teachers haven't created tests yet.</p>
+            ) : (
+              <ul className="divide-y">
+                {content.recentExams.map((ex) => (
+                  <li key={ex._id} className="flex items-center justify-between px-4 py-2.5 text-sm">
+                    <div className="min-w-0">
+                      <p className="truncate font-medium">{ex.title}</p>
+                      <p className="text-xs text-muted-foreground">{titleCase(ex.category)}</p>
+                    </div>
+                    <Badge variant={ex.status === "PUBLISHED" ? "success" : "secondary"}>{titleCase(ex.status)}</Badge>
                   </li>
                 ))}
               </ul>

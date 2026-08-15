@@ -256,21 +256,6 @@ export const BAND_LABEL = "IELTS Practice Band";
 export const PTE_LABEL = "Estimated PTE Practice Score";
 export const TEACHER_SCORE_LABEL = "Teacher-Assessed Score";
 
-export const SUBSCRIPTION_PLANS = [
-  { key: "WEEKLY", label: "Weekly", days: 7, price: 10 },
-  { key: "MONTHLY", label: "Monthly", days: 30, price: 25 },
-  { key: "THREE_MONTHS", label: "3 Months", days: 90, price: 65 },
-  { key: "SIX_MONTHS", label: "6 Months", days: 180, price: 120 },
-  { key: "YEARLY", label: "1 Year", days: 365, price: 200 },
-] as const;
-
-export type SubscriptionPlanKey = (typeof SUBSCRIPTION_PLANS)[number]["key"];
-
-export const SUBSCRIPTION_PLAN_KEYS = SUBSCRIPTION_PLANS.map((p) => p.key) as SubscriptionPlanKey[];
-
-export const SUBSCRIPTION_STATUSES = ["ACTIVE", "EXPIRED", "CANCELLED"] as const;
-export type SubscriptionStatus = (typeof SUBSCRIPTION_STATUSES)[number];
-
 export const CURRENCY = "NPR";
 
 export const DEFAULT_SUBSCRIPTION_PACKAGES = [

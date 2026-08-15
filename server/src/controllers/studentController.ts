@@ -2,26 +2,7 @@ import { Request, Response } from "express";
 import * as studentService from "../services/studentService";
 import * as examService from "../services/examService";
 import * as assignmentService from "../services/assignmentService";
-import * as subscriptionService from "../services/subscriptionService";
 import { ApiError, asyncHandler } from "../utils/helpers";
-
-export const getSubscription = asyncHandler(async (req: Request, res: Response) => {
-  if (!req.user) throw new ApiError(401, "Authentication required");
-  const data = await subscriptionService.getSubscription(req.user.id);
-  res.json({ success: true, message: "Subscription", data });
-});
-
-export const subscribe = asyncHandler(async (req: Request, res: Response) => {
-  if (!req.user) throw new ApiError(401, "Authentication required");
-  const data = await subscriptionService.subscribe(req.user.id, req.body.plan, req.body.startDate);
-  res.json({ success: true, message: "Subscription activated", data });
-});
-
-export const cancelSubscription = asyncHandler(async (req: Request, res: Response) => {
-  if (!req.user) throw new ApiError(401, "Authentication required");
-  const data = await subscriptionService.cancelSubscription(req.user.id);
-  res.json({ success: true, message: "Subscription cancelled", data });
-});
 
 export const dashboard = asyncHandler(async (req: Request, res: Response) => {
   if (!req.user) throw new ApiError(401, "Authentication required");

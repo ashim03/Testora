@@ -25,6 +25,9 @@ router.use(authenticate, authorize("CONSULTANCY"));
 
 router.get("/overview", consultancy.overview);
 router.get("/subscription", consultancy.subscription);
+router.get("/content/overview", consultancy.contentOverview);
+router.get("/courses", consultancy.listCourses);
+router.get("/exams", consultancy.listExams);
 router.get("/teachers", consultancy.listTeachers);
 router.get("/teachers/all", consultancy.teacherList);
 router.post("/teachers", validateRequest(addConsultancyUserSchema as never), consultancy.createTeacher);

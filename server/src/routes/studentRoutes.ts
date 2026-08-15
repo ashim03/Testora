@@ -4,7 +4,7 @@ import * as student from "../controllers/studentController";
 import { authenticate, authorize } from "../middleware/auth";
 import { validateRequest } from "../middleware/error";
 import { submitLimiter } from "../middleware/rateLimit";
-import { integrityEventSchema, subscribeSchema } from "@testora-platform/shared";
+import { integrityEventSchema } from "@testora-platform/shared";
 
 const answersSchema = z.object({
   answers: z.array(
@@ -20,10 +20,6 @@ const router = Router();
 router.use(authenticate, authorize("STUDENT"));
 
 router.get("/dashboard", student.dashboard);
-
-router.get("/subscription", student.getSubscription);
-router.post("/subscription", validateRequest(subscribeSchema as never), student.subscribe);
-router.post("/subscription/cancel", student.cancelSubscription);
 
 router.get("/exams", student.listExams);
 router.get("/practice", student.listPracticeExams);
