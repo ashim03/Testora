@@ -1,4 +1,5 @@
 import { AIFeedback, LearningProfile } from "../models";
+import type { ISkillMastery } from "../models/LearningProfile";
 import { ApiError } from "../utils/helpers";
 
 export type FeedbackType = "WRITING" | "SPEAKING";
@@ -8,6 +9,7 @@ const MODEL = process.env.AI_MODEL || "qwen-plus";
 const BASE_URL = (process.env.AI_BASE_URL || "https://api.openai.com/v1").replace(/\/$/, "");
 const API_URL = `${BASE_URL}/responses`;
 const clamp = (value: number) => Math.max(0, Math.min(100, Math.round(value)));
+const clampTrend = (value: number) => Math.max(-100, Math.min(100, Math.round(value)));
 
 function extractOutputText(payload: { output?: Array<{ type?: string; content?: Array<{ type?: string; text?: string }> }> }): string {
   return (payload.output || []).filter((item) => item.type === "message").flatMap((item) => item.content || []).filter((part) => part.type === "output_text" && part.text).map((part) => part.text as string).join("\n").trim();
@@ -24,12 +26,12 @@ function parseJson(text: string): AiFeedback {
 
 async function updateLearningProfile(studentId: string, skillScores: Record<string, number>) {
   const profile = await LearningProfile.findOneAndUpdate({ studentId }, { $setOnInsert: { studentId } }, { upsert: true, new: true });
-  const skills = profile.skills instanceof Map ? profile.skills : new Map(Object.entries(profile.skills || {}));
+  const skills = profile.skills as unknown as Map<string, ISkillMastery>;
   for (const [skill, rawScore] of Object.entries(skillScores)) {
     const score = clamp(rawScore);
     const previous = skills.get(skill) || { score: 50, attempts: 0, trend: 0, lastPracticedAt: null };
     const nextScore = previous.attempts === 0 ? score : clamp(previous.score * 0.7 + score * 0.3);
-    skills.set(skill, { score: nextScore, attempts: previous.attempts + 1, trend: clamp(nextScore - previous.score), lastPracticedAt: new Date() });
+    skills.set(skill, { score: nextScore, attempts: previous.attempts + 1, trend: clampTrend(nextScore - previous.score), lastPracticedAt: new Date() });
   }
   profile.skills = skills;
   profile.totalPracticeSessions += 1;
