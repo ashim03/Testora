@@ -185,9 +185,47 @@ export function parseWebmDuration(buffer: Buffer): number | null {
   return null;
 }
 
+export function parseM4aDuration(buffer: Buffer): number | null {
+  const findBox = (start: number, limit: number, name: string): { dataStart: number; size: number } | null => {
+    let off = start;
+    const end = Math.min(buffer.length, start + limit);
+    while (off + 8 <= end) {
+      const boxSize = buffer.readUInt32BE(off);
+      const type = buffer.toString("ascii", off + 4, off + 8);
+      if (type === name) return { dataStart: off + 8, size: boxSize >= 8 ? boxSize - 8 : end - off - 8 };
+      if (boxSize < 8) return null;
+      off += boxSize;
+    }
+    return null;
+  };
+
+  const moov = findBox(0, buffer.length, "moov");
+  if (!moov) return null;
+  const mvhd = findBox(moov.dataStart, moov.size, "mvhd");
+  if (!mvhd) return null;
+
+  const d = mvhd.dataStart;
+  if (d + 20 > buffer.length) return null;
+  const version = buffer[d];
+  let timescale: number;
+  let duration: number;
+  if (version === 1) {
+    if (d + 32 > buffer.length) return null;
+    timescale = buffer.readUInt32BE(d + 20);
+    duration = Number(buffer.readBigUInt64BE(d + 24));
+  } else {
+    if (d + 20 > buffer.length) return null;
+    timescale = buffer.readUInt32BE(d + 12);
+    duration = buffer.readUInt32BE(d + 16);
+  }
+  if (!timescale || timescale === 0) return null;
+  return duration / timescale;
+}
+
 export function decodeAudioDuration(buffer: Buffer, format: AudioFormat): number | null {
   if (format === "wav") return parseWavDuration(buffer);
   if (format === "webm") return parseWebmDuration(buffer);
+  if (format === "m4a") return parseM4aDuration(buffer);
   return null;
 }
 
@@ -242,11 +280,11 @@ export function validateSpeakingAudio(
     // Trust the container parse over any client-reported timer.
     durationSec = parsedDuration;
   } else {
-    // Container not parseable (e.g. MP3): fall back to the client report,
+    // Container not parseable (e.g. MP3/OGG): fall back to the client report,
     // but reject claims that cannot fit in the file size at a plausible
-    // maximum bitrate (40 KB/s ≈ 320 kbps).
+    // minimum bitrate (6 KB/s ≈ 48 kbps — opus/AAC encoders are rarely lower).
     durationSec = Math.max(0, Math.floor(reportedDurationSec || 0));
-    const maxPossibleSec = buffer.length / (40 * 1024) + 5;
+    const maxPossibleSec = buffer.length / (6 * 1024) + 2;
     if (durationSec > maxPossibleSec) {
       throw new ApiError(400, "Reported recording duration is not consistent with the audio file.");
     }
