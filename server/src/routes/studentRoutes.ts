@@ -31,6 +31,7 @@ router.get("/progress/analytics", student.progressAnalytics);
 router.get("/feedback", student.feedback);
 router.post("/feedback/ai", submitLimiter, validateRequest(aiFeedbackSchema as never), student.aiFeedback);
 router.get("/feedback/ai/history", student.aiFeedbackHistory);
+router.get("/leaderboard", student.leaderboard);
 router.get("/notifications", student.listNotifications);
 router.patch("/notifications/:id/read", student.markRead);
 router.post("/notifications/read-all", student.markAllRead);
