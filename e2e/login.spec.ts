@@ -30,7 +30,7 @@ test("student can sign in", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
 
   await page.getByLabel("Email").fill("student@example.com");
-  await page.getByLabel("Password", { exact: true }).fill("Student@12345");
+  await page.locator('input[name="password"]').fill("Student@12345");
   await page.getByRole("button", { name: "Sign in" }).click();
 
   await expect(page).toHaveURL(/\/student$/);
@@ -39,7 +39,7 @@ test("student can sign in", async ({ page }) => {
 test("invalid credentials show an error", async ({ page }) => {
   await page.goto("/login");
   await page.getByLabel("Email").fill("student@example.com");
-  await page.getByLabel("Password", { exact: true }).fill("wrong-password");
+  await page.locator('input[name="password"]').fill("wrong-password");
   await page.getByRole("button", { name: "Sign in" }).click();
 
   await expect(page.getByText("Invalid credentials")).toBeVisible();
