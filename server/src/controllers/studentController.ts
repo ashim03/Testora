@@ -6,46 +6,12 @@ import * as assignmentService from "../services/assignmentService";
 import * as adaptivePracticeService from "../services/adaptivePracticeService";
 import { ApiError, asyncHandler } from "../utils/helpers";
 
-export const dashboard = asyncHandler(async (req: Request, res: Response) => {
-  if (!req.user) throw new ApiError(401, "Authentication required");
-  const data = await studentService.studentDashboard(req.user.id);
-  res.json({ success: true, message: "Student dashboard", data });
-});
-
-export const listExams = asyncHandler(async (req: Request, res: Response) => {
-  if (!req.user) throw new ApiError(401, "Authentication required");
-  const result = await studentExamQueryService.listStudentExams(req.user.id, { page: Number(req.query.page || 1), limit: Number(req.query.limit || 10) });
-  const d = result as { data: unknown; page: number; limit: number; total: number; pages: number };
-  res.json({ success: true, message: "My exams", data: d.data, pagination: { page: d.page, limit: d.limit, total: d.total, pages: d.pages } });
-});
-
-export const listPracticeExams = asyncHandler(async (req: Request, res: Response) => {
-  if (!req.user) throw new ApiError(401, "Authentication required");
-  const result = await studentExamQueryService.listPracticeExams(req.user.id, { page: Number(req.query.page || 1), limit: Number(req.query.limit || 10), search: String(req.query.search || ""), category: String(req.query.category || ""), part: String(req.query.part || "") });
-  const d = result as { data: unknown; page: number; limit: number; total: number; pages: number };
-  res.json({ success: true, message: "Practice tests", data: d.data, pagination: { page: d.page, limit: d.limit, total: d.total, pages: d.pages } });
-});
-
-export const adaptivePractice = asyncHandler(async (req: Request, res: Response) => {
-  if (!req.user) throw new ApiError(401, "Authentication required");
-  const data = await adaptivePracticeService.getAdaptivePractice(req.user.id, {
-    limit: Number(req.query.limit || 10),
-    category: req.query.category ? String(req.query.category) : undefined,
-  });
-  res.json({ success: true, message: "Adaptive practice", data });
-});
-
-export const sectionalSummary = asyncHandler(async (req: Request, res: Response) => {
-  if (!req.user) throw new ApiError(401, "Authentication required");
-  const data = await examService.getSectionalPracticeSummary(req.user.id);
-  res.json({ success: true, message: "Sectional practice summary", data });
-});
-
-export const getExam = asyncHandler(async (req: Request, res: Response) => {
-  if (!req.user) throw new ApiError(401, "Authentication required");
-  const data = await examService.getStudentExam(String(req.params.id), req.user.id);
-  res.json({ success: true, message: "Exam", data });
-});
+export const dashboard = asyncHandler(async (req: Request, res: Response) => { if (!req.user) throw new ApiError(401, "Authentication required"); const data = await studentService.studentDashboard(req.user.id); res.json({ success: true, message: "Student dashboard", data }); });
+export const listExams = asyncHandler(async (req: Request, res: Response) => { if (!req.user) throw new ApiError(401, "Authentication required"); const result = await studentExamQueryService.listStudentExams(req.user.id, { page: Number(req.query.page || 1), limit: Number(req.query.limit || 10) }); const d = result as { data: unknown; page: number; limit: number; total: number; pages: number }; res.json({ success: true, message: "My exams", data: d.data, pagination: { page: d.page, limit: d.limit, total: d.total, pages: d.pages } }); });
+export const listPracticeExams = asyncHandler(async (req: Request, res: Response) => { if (!req.user) throw new ApiError(401, "Authentication required"); const result = await studentExamQueryService.listPracticeExams(req.user.id, { page: Number(req.query.page || 1), limit: Number(req.query.limit || 10), search: String(req.query.search || ""), category: String(req.query.category || ""), part: String(req.query.part || "") }); const d = result as { data: unknown; page: number; limit: number; total: number; pages: number }; res.json({ success: true, message: "Practice tests", data: d.data, pagination: { page: d.page, limit: d.limit, total: d.total, pages: d.pages } }); });
+export const adaptivePractice = asyncHandler(async (req: Request, res: Response) => { if (!req.user) throw new ApiError(401, "Authentication required"); const data = await adaptivePracticeService.getAdaptivePractice(req.user.id, { limit: Number(req.query.limit || 10), category: req.query.category ? String(req.query.category) : undefined }); res.json({ success: true, message: "Adaptive practice", data }); });
+export const sectionalSummary = asyncHandler(async (req: Request, res: Response) => { if (!req.user) throw new ApiError(401, "Authentication required"); const data = await examService.getSectionalPracticeSummary(req.user.id); res.json({ success: true, message: "Sectional practice summary", data }); });
+export const getExam = asyncHandler(async (req: Request, res: Response) => { if (!req.user) throw new ApiError(401, "Authentication required"); const data = await examService.getStudentExam(String(req.params.id), req.user.id); res.json({ success: true, message: "Exam", data }); });
 export const startExam = asyncHandler(async (req: Request, res: Response) => { if (!req.user) throw new ApiError(401, "Authentication required"); const data = await examService.startAttempt(String(req.params.id), req.user.id); res.json({ success: true, message: "Exam started", data }); });
 export const getAttempt = asyncHandler(async (req: Request, res: Response) => { if (!req.user) throw new ApiError(401, "Authentication required"); const data = await examService.getAttempt(String(req.params.id), req.user.id); res.json({ success: true, message: "Attempt", data }); });
 export const saveAnswers = asyncHandler(async (req: Request, res: Response) => { if (!req.user) throw new ApiError(401, "Authentication required"); const count = await examService.saveAnswers(String(req.params.id), req.user.id, req.body.answers); res.json({ success: true, message: "Answers saved", data: { saved: count } }); });
@@ -57,6 +23,7 @@ export const submitAssignment = asyncHandler(async (req: Request, res: Response)
 export const listResults = asyncHandler(async (req: Request, res: Response) => { if (!req.user) throw new ApiError(401, "Authentication required"); const result = await studentService.studentResults(req.user.id, { page: Number(req.query.page || 1), limit: Number(req.query.limit || 10) }); const d = result as { data: unknown; page: number; limit: number; total: number; pages: number }; res.json({ success: true, message: "Results", data: d.data, pagination: { page: d.page, limit: d.limit, total: d.total, pages: d.pages } }); });
 export const getResult = asyncHandler(async (req: Request, res: Response) => { if (!req.user) throw new ApiError(401, "Authentication required"); const data = await studentService.studentResultById(String(req.params.id), req.user.id); res.json({ success: true, message: "Result", data }); });
 export const progress = asyncHandler(async (req: Request, res: Response) => { if (!req.user) throw new ApiError(401, "Authentication required"); const data = await studentService.studentProgress(req.user.id); res.json({ success: true, message: "Progress", data }); });
+export const progressAnalytics = asyncHandler(async (req: Request, res: Response) => { if (!req.user) throw new ApiError(401, "Authentication required"); const data = await studentService.studentProgressAnalytics(req.user.id); res.json({ success: true, message: "Progress analytics", data }); });
 export const feedback = asyncHandler(async (req: Request, res: Response) => { if (!req.user) throw new ApiError(401, "Authentication required"); const data = await studentService.studentFeedback(req.user.id); res.json({ success: true, message: "Feedback", data }); });
 export const listNotifications = asyncHandler(async (req: Request, res: Response) => { if (!req.user) throw new ApiError(401, "Authentication required"); const data = await studentService.studentNotifications(req.user.id, { page: Number(req.query.page || 1), limit: Number(req.query.limit || 10) }); const d = data as { data: unknown; page: number; limit: number; total: number; pages: number; unread: number }; res.json({ success: true, message: "Notifications", data: d.data, pagination: { page: d.page, limit: d.limit, total: d.total, pages: d.pages }, unread: d.unread }); });
 export const markRead = asyncHandler(async (req: Request, res: Response) => { if (!req.user) throw new ApiError(401, "Authentication required"); await studentService.markNotificationRead(String(req.params.id), req.user.id); res.json({ success: true, message: "Marked read" }); });
