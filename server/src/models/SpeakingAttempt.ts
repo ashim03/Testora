@@ -7,6 +7,7 @@ export interface ISpeakingScoreSet {
   grammar: number;
   vocabulary: number;
   coherence: number;
+  taskResponse?: number | null;
 }
 
 export interface ISpeakingMetrics {
@@ -34,6 +35,8 @@ export interface ISpeakingReport {
   disclaimer: string;
   providerModel: string | null;
   estimate: boolean;
+  offTopic?: boolean;
+  taskResponseNote?: string | null;
 }
 
 export interface IAudioMetadata {
@@ -72,6 +75,7 @@ const scoreSetSchema = new mongoose.Schema<ISpeakingScoreSet>(
     grammar: { type: Number, min: 0, max: 100, required: true },
     vocabulary: { type: Number, min: 0, max: 100, required: true },
     coherence: { type: Number, min: 0, max: 100, required: true },
+    taskResponse: { type: Number, min: 0, max: 100, default: null },
   },
   { _id: false },
 );
@@ -105,6 +109,8 @@ const reportSchema = new mongoose.Schema<ISpeakingReport>(
     disclaimer: { type: String, required: true },
     providerModel: { type: String, default: null },
     estimate: { type: Boolean, default: true },
+    offTopic: { type: Boolean, default: false },
+    taskResponseNote: { type: String, default: null },
   },
   { _id: false },
 );

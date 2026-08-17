@@ -15,6 +15,7 @@ export interface SpeakingScores {
   grammar: number;
   vocabulary: number;
   coherence: number;
+  taskResponse?: number | null;
 }
 
 export interface SpeakingMetrics {
@@ -42,6 +43,8 @@ export interface SpeakingReport {
   disclaimer: string;
   providerModel: string | null;
   estimate: boolean;
+  offTopic?: boolean;
+  taskResponseNote?: string | null;
 }
 
 export interface SpeakingAttemptSummary {

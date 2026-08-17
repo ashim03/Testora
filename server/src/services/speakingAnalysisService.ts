@@ -1,4 +1,5 @@
 import { FILLER_WORDS, DISCOURSE_MARKERS } from "@testora-platform/shared";
+import type { AiAnalysisResult } from "@testora-platform/shared";
 
 export interface SpeakingMetrics {
   durationSec: number;
@@ -22,6 +23,7 @@ export interface SpeakingScores {
   grammar: number;
   vocabulary: number;
   coherence: number;
+  taskResponse?: number | null;
 }
 
 export interface QualitativeFeedback {
@@ -29,6 +31,16 @@ export interface QualitativeFeedback {
   weaknesses: string[];
   recommendations: string[];
 }
+
+export interface MergedSpeakingScoring {
+  scores: SpeakingScores;
+  offTopic: boolean;
+  taskResponseNote: string | null;
+}
+
+export const OFF_TOPIC_WEAKNESS = "Your response drifted off the task topic — focus on directly answering the question.";
+export const OFF_TOPIC_RECOMMENDATION = "Before speaking, note the key words in the task and answer every part of it.";
+const TASK_RESPONSE_THRESHOLD = 40;
 
 export interface SpeakingAnalysisResult {
   metrics: SpeakingMetrics;
@@ -162,10 +174,44 @@ export function analyzeTranscript(input: AnalysisInput): SpeakingAnalysisResult 
     typeTokenRatio: Math.round(typeTokenRatio * 100) / 100,
   };
 
-  const scores: SpeakingScores = { overall, fluency, grammar, vocabulary, coherence };
+  const scores: SpeakingScores = { overall, fluency, grammar, vocabulary, coherence, taskResponse: null };
   const qualitative = buildQualitativeFeedback(metrics, { typeTokenRatio, longWordRatio });
 
   return { metrics, scores, qualitative, estimate: true };
+}
+
+/**
+ * Combines the heuristic analysis with optional AI scores and derives the
+ * final score set. Topic adherence (taskResponse) is only assessed when the
+ * AI evaluated a response against a task prompt; it is weighted highest so a
+ * fluent but irrelevant answer cannot earn a high overall score.
+ */
+export function mergeSpeakingScores(
+  analysis: SpeakingAnalysisResult,
+  ai: Pick<AiAnalysisResult, "overallScore" | "skillScores"> | null,
+  hasPrompt: boolean,
+): MergedSpeakingScoring {
+  if (!ai) {
+    return { scores: { ...analysis.scores, taskResponse: null }, offTopic: false, taskResponseNote: null };
+  }
+  const pick = (key: "fluency" | "grammar" | "vocabulary" | "coherence") => {
+    const value = ai.skillScores[key];
+    return typeof value === "number" && Number.isFinite(value) ? clampScore(value) : analysis.scores[key];
+  };
+  const rawTaskResponse = ai.skillScores.taskResponse;
+  const taskResponse = typeof rawTaskResponse === "number" && Number.isFinite(rawTaskResponse) ? clampScore(rawTaskResponse) : null;
+  const base = { fluency: pick("fluency"), grammar: pick("grammar"), vocabulary: pick("vocabulary"), coherence: pick("coherence") };
+  const offTopic = taskResponse !== null && taskResponse < TASK_RESPONSE_THRESHOLD;
+  let overall: number;
+  let taskResponseNote: string | null = null;
+  if (taskResponse !== null) {
+    overall = clampScore(taskResponse * 0.25 + base.fluency * 0.25 + base.grammar * 0.2 + base.vocabulary * 0.2 + base.coherence * 0.1);
+    if (offTopic) taskResponseNote = "Your response appears to have gone off topic, which lowered your overall score.";
+  } else {
+    overall = clampScore(ai.overallScore);
+    if (!hasPrompt) taskResponseNote = "Topic relevance was not assessed because no task prompt was provided for this attempt.";
+  }
+  return { scores: { ...base, overall, taskResponse }, offTopic, taskResponseNote };
 }
 
 function buildQualitativeFeedback(metrics: SpeakingMetrics, richness: { typeTokenRatio: number; longWordRatio: number }): QualitativeFeedback {

@@ -15,6 +15,12 @@ const SKILL_COLORS: Record<string, string> = {
   grammar: "#0d9488",
   vocabulary: "#7c3aed",
   coherence: "#db2777",
+  taskResponse: "#ea580c",
+};
+
+const SKILL_HINTS: Record<string, string> = {
+  fluency: "Based on pace, pauses and filler words.",
+  taskResponse: "How fully your response addressed the task prompt and stayed on topic.",
 };
 
 function ScoreBar({ label, score, color, hint }: { label: string; score: number; color: string; hint?: string }) {
@@ -182,6 +188,17 @@ export function SpeakingResultPage() {
 
       {data.status === "COMPLETED" && report && (
         <>
+          {report.offTopic && (
+            <div className="flex items-start gap-3 rounded-lg border border-amber-500/40 bg-amber-500/10 p-4" data-testid="off-topic-warning" role="alert">
+              <AlertTriangle className="mt-0.5 size-5 shrink-0 text-amber-600" />
+              <div>
+                <p className="font-medium text-amber-800">Off-topic response</p>
+                <p className="text-sm text-amber-700">
+                  Your response drifted from the task, so your overall score was reduced even where your English was strong. {report.taskResponseNote ?? "Re-read the prompt and answer every part of it next time."}
+                </p>
+              </div>
+            </div>
+          )}
           <div className="grid gap-6 lg:grid-cols-5">
             <Card className="lg:col-span-2">
               <CardHeader>
@@ -209,16 +226,19 @@ export function SpeakingResultPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 {(Object.keys(report.skillScores) as Array<keyof typeof report.skillScores>)
-                  .filter((key) => key !== "overall")
+                  .filter((key) => key !== "overall" && typeof report.skillScores[key] === "number")
                   .map((key) => (
                     <ScoreBar
                       key={key}
-                      label={key.charAt(0).toUpperCase() + key.slice(1)}
-                      score={report.skillScores[key]}
+                      label={key === "taskResponse" ? "Task response" : key.charAt(0).toUpperCase() + key.slice(1)}
+                      score={report.skillScores[key] as number}
                       color={SKILL_COLORS[key] ?? "#2563eb"}
-                      hint={key === "fluency" ? "Based on pace, pauses and filler words." : undefined}
+                      hint={SKILL_HINTS[key]}
                     />
                   ))}
+                {report.taskResponseNote && !report.offTopic && (
+                  <p className="text-xs text-muted-foreground">{report.taskResponseNote}</p>
+                )}
               </CardContent>
             </Card>
           </div>
