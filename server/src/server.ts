@@ -3,6 +3,7 @@ import { connectDatabase } from "./config/db";
 import { createApp } from "./app";
 import { startAutoSubmitInterval } from "./jobs/autoSubmit";
 import { startAssignmentReminderInterval } from "./jobs/assignmentReminders";
+import { recoverStuckSpeakingAttempts } from "./services/speakingService";
 
 async function bootstrap(): Promise<void> {
   validateEnv();
@@ -16,6 +17,7 @@ async function bootstrap(): Promise<void> {
     if (jobsStarted) return;
     startAutoSubmitInterval();
     startAssignmentReminderInterval();
+    recoverStuckSpeakingAttempts().catch((e) => console.error("[speaking] stuck-attempt recovery failed", e));
     jobsStarted = true;
   };
 

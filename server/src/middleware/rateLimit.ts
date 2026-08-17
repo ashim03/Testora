@@ -32,3 +32,12 @@ export const submitLimiter = rateLimit({
     message: "Too many submissions, please slow down.",
   },
 });
+
+export const speakingLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  message: {
+    success: false,
+    message: "Too many speaking attempts, please try again later.",
+  },
+});

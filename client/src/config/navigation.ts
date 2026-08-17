@@ -20,6 +20,7 @@ import {
   CreditCard,
   Building2,
   Receipt,
+  Mic,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -98,6 +99,7 @@ const studentNav: NavGroup[] = [
       { label: "Practice tests", to: "/student/practice", icon: PenSquare },
       { label: "Assignments", to: "/student/assignments", icon: ClipboardPen },
       { label: "Results", to: "/student/results", icon: Award },
+      { label: "Speaking", to: "/student/speaking", icon: Mic },
       { label: "Feedback", to: "/student/feedback", icon: MessageSquare },
       { label: "Progress", to: "/student/progress", icon: BarChart3 },
     ],

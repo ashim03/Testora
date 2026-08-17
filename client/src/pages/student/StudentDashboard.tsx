@@ -249,6 +249,7 @@ export function StudentDashboard() {
             <QuickAction to="/student/courses" icon={BookOpen} label="Continue my courses" count={data.courseCount} />
             <QuickAction to="/student/tests" icon={FileText} label="Take a test" />
             <QuickAction to="/student/practice" icon={PenSquare} label="Practice questions" />
+            <QuickAction to="/student/speaking" icon={Mic} label="Speaking practice" />
             <QuickAction to="/student/assignments" icon={ClipboardList} label="Pending assignments" count={data.pendingAssignments} />
           </CardContent>
         </Card>
