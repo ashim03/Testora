@@ -7,7 +7,7 @@ import { submitLimiter } from "../middleware/rateLimit";
 import { integrityEventSchema } from "@testora-platform/shared";
 
 const answersSchema = z.object({ answers: z.array(z.object({ questionId: z.string(), answer: z.any(), answered: z.boolean().optional() })) });
-const aiFeedbackSchema = z.object({ type: z.enum(["WRITING", "SPEAKING"]), text: z.string().trim().min(20).max(12000), prompt: z.string().trim().max(2000).optional() });
+const aiFeedbackSchema = z.object({ type: z.enum(["WRITING", "SPEAKING"]), text: z.string().trim().min(20).max(12000), prompt: z.string().trim().max(2000).optional(), attemptId: z.string().min(1).max(64).optional(), examId: z.string().min(1).max(64).optional() });
 const router = Router();
 router.use(authenticate, authorize("STUDENT"));
 router.get("/dashboard", student.dashboard);

@@ -48,3 +48,50 @@ export type MediaAssetKind =
   | "ASSIGNMENT_FILE"
   | "SUBMISSION_FILE"
   | "AUDIO_FEEDBACK";
+
+export type AIFeedbackType = "WRITING" | "SPEAKING";
+
+export type AiErrorCategory =
+  | "grammar"
+  | "vocabulary"
+  | "coherence"
+  | "fluency"
+  | "task_response"
+  | "spelling"
+  | "punctuation";
+
+export type AiAnnotationSeverity = "low" | "medium" | "high";
+
+export interface AiErrorAnnotation {
+  start: number;
+  end: number;
+  original: string;
+  correction: string;
+  better?: string;
+  category: AiErrorCategory | string;
+  note: string;
+  severity: AiAnnotationSeverity;
+}
+
+export interface AiBandSet {
+  ielts?: number | null;
+  pte?: number | null;
+}
+
+export interface AiAnalysisResult {
+  overallScore: number;
+  skillScores: Record<string, number>;
+  bands?: AiBandSet;
+  strengths: string[];
+  improvements: string[];
+  grammar: string[];
+  vocabulary: string[];
+  coherence: string[];
+  fluency: string[];
+  pronunciation: string[];
+  nextSteps: string[];
+  annotations: AiErrorAnnotation[];
+  modelAnswer?: string | null;
+  advice?: string | null;
+  disclaimer: string;
+}
