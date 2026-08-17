@@ -26,6 +26,7 @@ router.post("/assignments/:id/submit", submitLimiter, student.submitAssignment);
 router.get("/results", student.listResults);
 router.get("/results/:id", student.getResult);
 router.get("/progress", student.progress);
+router.get("/progress/analytics", student.progressAnalytics);
 router.get("/feedback", student.feedback);
 router.get("/notifications", student.listNotifications);
 router.patch("/notifications/:id/read", student.markRead);
