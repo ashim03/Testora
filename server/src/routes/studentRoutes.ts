@@ -7,6 +7,11 @@ import { submitLimiter } from "../middleware/rateLimit";
 import { integrityEventSchema } from "@testora-platform/shared";
 
 const answersSchema = z.object({ answers: z.array(z.object({ questionId: z.string(), answer: z.any(), answered: z.boolean().optional() })) });
+const aiFeedbackSchema = z.object({
+  type: z.enum(["WRITING", "SPEAKING"]),
+  text: z.string().trim().min(20).max(12000),
+  prompt: z.string().trim().max(2000).optional(),
+});
 const router = Router();
 router.use(authenticate, authorize("STUDENT"));
 router.get("/dashboard", student.dashboard);
@@ -28,6 +33,7 @@ router.get("/results/:id", student.getResult);
 router.get("/progress", student.progress);
 router.get("/progress/analytics", student.progressAnalytics);
 router.get("/feedback", student.feedback);
+router.post("/feedback/ai", submitLimiter, validateRequest(aiFeedbackSchema as never), student.aiFeedback);
 router.get("/notifications", student.listNotifications);
 router.patch("/notifications/:id/read", student.markRead);
 router.post("/notifications/read-all", student.markAllRead);
