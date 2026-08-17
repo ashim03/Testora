@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import * as studentService from "../services/studentService";
 import * as examService from "../services/examService";
+import * as studentExamQueryService from "../services/studentExamQueryService";
 import * as assignmentService from "../services/assignmentService";
 import { ApiError, asyncHandler } from "../utils/helpers";
 
@@ -12,14 +13,14 @@ export const dashboard = asyncHandler(async (req: Request, res: Response) => {
 
 export const listExams = asyncHandler(async (req: Request, res: Response) => {
   if (!req.user) throw new ApiError(401, "Authentication required");
-  const result = await examService.listStudentExams(req.user.id, { page: Number(req.query.page || 1), limit: Number(req.query.limit || 10) });
+  const result = await studentExamQueryService.listStudentExams(req.user.id, { page: Number(req.query.page || 1), limit: Number(req.query.limit || 10) });
   const d = result as { data: unknown; page: number; limit: number; total: number; pages: number };
   res.json({ success: true, message: "My exams", data: d.data, pagination: { page: d.page, limit: d.limit, total: d.total, pages: d.pages } });
 });
 
 export const listPracticeExams = asyncHandler(async (req: Request, res: Response) => {
   if (!req.user) throw new ApiError(401, "Authentication required");
-  const result = await examService.listPracticeExams(req.user.id, {
+  const result = await studentExamQueryService.listPracticeExams(req.user.id, {
     page: Number(req.query.page || 1),
     limit: Number(req.query.limit || 10),
     search: String(req.query.search || ""),
