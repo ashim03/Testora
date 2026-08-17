@@ -51,16 +51,26 @@ export function createApp(options: CreateAppOptions = {}): Application {
   if (options.beforeApi) api.use(options.beforeApi);
   api.use(sanitizeMongoQuery);
   api.use(sanitizePagination);
+
   api.get("/health", (_req: Request, res: Response) => {
-    res.json({
+    res.status(200).json({
       success: true,
-      message: "Health check ok",
+      data: { status: "ok", time: new Date().toISOString() },
+    });
+  });
+
+  api.get("/health/readiness", (_req: Request, res: Response) => {
+    const ready = mongoose.connection.readyState === 1;
+    res.status(ready ? 200 : 503).json({
+      success: ready,
       data: {
+        status: ready ? "ready" : "not_ready",
+        db: ready ? "connected" : "disconnected",
         time: new Date().toISOString(),
-        db: mongoose.connection.readyState,
       },
     });
   });
+
   api.use("/auth", authRoutes);
   api.use("/admin", adminRoutes);
   api.use("/consultancy", consultancyRoutes);
@@ -75,7 +85,6 @@ export function createApp(options: CreateAppOptions = {}): Application {
   api.use("/chat", chatRoutes);
 
   app.use("/api", api);
-
   app.use(notFound);
   app.use(errorHandler);
 
