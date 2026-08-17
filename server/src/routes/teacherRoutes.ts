@@ -23,6 +23,7 @@ router.get("/batches", teacher.listBatches);
 router.post("/batches", validateRequest(createBatchSchema as never), teacher.createBatch);
 router.patch("/batches/:id", validateRequest(updateBatchSchema as never), teacher.updateBatch);
 router.patch("/batches/:id/students", validateRequest(batchStudentsSchema as never), teacher.addStudentsToBatch);
+router.get("/analytics/cohorts", teacher.cohortAnalytics);
 router.get("/question-bank/export", teacher.exportQuestionBank);
 router.post("/question-bank/import", upload.single("file"), teacher.importQuestionBank);
 router.get("/reports", teacher.reports);
