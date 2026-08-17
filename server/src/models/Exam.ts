@@ -112,6 +112,11 @@ const schema = new mongoose.Schema(
   { timestamps: true },
 );
 
+// Match the primary exam-list access patterns: teacher-owned lists and
+// status/category filters sorted by creation date.
+schema.index({ createdBy: 1, deletedAt: 1, createdAt: -1 });
+schema.index({ status: 1, category: 1, deletedAt: 1, createdAt: -1 });
+
 export const Exam: Model<IExam> = mongoose.model<IExam>("Exam", schema);
 export const ExamSection: Model<IExamSection> = mongoose.model<IExamSection>(
   "ExamSection",
@@ -150,6 +155,8 @@ const examAssignmentSchema = new mongoose.Schema(
 );
 
 examAssignmentSchema.index({ studentId: 1, examId: 1 });
+examAssignmentSchema.index({ studentId: 1, assignedAt: -1 });
+examAssignmentSchema.index({ teacherId: 1, status: 1, dueAt: 1 });
 
 export const ExamAssignment: Model<IExamAssignment> = mongoose.model<IExamAssignment>(
   "ExamAssignment",
