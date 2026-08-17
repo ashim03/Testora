@@ -8,6 +8,7 @@ export interface IAIFeedback extends Document {
   prompt?: string | null;
   submission: string;
   overallScore: number;
+  skillScores: Record<string, number>;
   strengths: string[];
   improvements: string[];
   grammar: string[];
@@ -28,6 +29,7 @@ const schema = new mongoose.Schema<IAIFeedback>({
   prompt: { type: String, default: null },
   submission: { type: String, required: true, maxlength: 12000 },
   overallScore: { type: Number, required: true, min: 0, max: 100 },
+  skillScores: { type: mongoose.Schema.Types.Mixed, default: {} },
   strengths: { type: [String], default: [] },
   improvements: { type: [String], default: [] },
   grammar: { type: [String], default: [] },
