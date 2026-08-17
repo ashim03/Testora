@@ -1,6 +1,6 @@
 import mongoose, { type Document, type Types, type Model } from "mongoose";
 
-export type AssignmentStatus = "DRAFT" | "ASSIGNED" | "OPEN" | "CLOSED";
+export type AssignmentStatus = "DRAFT" | "SCHEDULED" | "ASSIGNED" | "OPEN" | "CLOSED";
 
 export interface IAssignment extends Document {
   createdBy: Types.ObjectId;
@@ -12,6 +12,9 @@ export interface IAssignment extends Document {
   studentIds: Types.ObjectId[];
   batchIds: Types.ObjectId[];
   dueAt?: Date | null;
+  publishAt?: Date | null;
+  reminderHoursBefore: number[];
+  reminderSentAt: Date[];
   maxMarks: number;
   attachments: string[];
   status: AssignmentStatus;
@@ -39,19 +42,18 @@ const schema = new mongoose.Schema(
     questionIds: { type: [mongoose.Schema.Types.ObjectId], ref: "Question", default: [] },
     studentIds: { type: [mongoose.Schema.Types.ObjectId], ref: "User", default: [] },
     batchIds: { type: [mongoose.Schema.Types.ObjectId], ref: "Batch", default: [] },
-    dueAt: { type: Date, default: null },
+    dueAt: { type: Date, default: null, index: true },
+    publishAt: { type: Date, default: null, index: true },
+    reminderHoursBefore: { type: [Number], default: [24, 1] },
+    reminderSentAt: { type: [Date], default: [] },
     maxMarks: { type: Number, default: 50 },
     attachments: { type: [String], default: [] },
-    status: { type: String, enum: ["DRAFT", "ASSIGNED", "OPEN", "CLOSED"], default: "DRAFT" },
+    status: { type: String, enum: ["DRAFT", "SCHEDULED", "ASSIGNED", "OPEN", "CLOSED"], default: "DRAFT" },
     courseId: { type: mongoose.Schema.Types.ObjectId, ref: "Course", default: null, index: true },
     moduleId: { type: mongoose.Schema.Types.ObjectId, ref: "CourseModule", default: null },
     chapterId: { type: mongoose.Schema.Types.ObjectId, ref: "CourseChapter", default: null },
     lessonId: { type: mongoose.Schema.Types.ObjectId, ref: "Lesson", default: null },
-    submissionType: {
-      type: String,
-      enum: ["TEXT", "FILE", "TEXT_AND_FILE", "LINK", "AUDIO_VIDEO"],
-      default: "TEXT",
-    },
+    submissionType: { type: String, enum: ["TEXT", "FILE", "TEXT_AND_FILE", "LINK", "AUDIO_VIDEO"], default: "TEXT" },
     allowedFileTypes: { type: [String], default: [] },
     requiresAttachment: { type: Boolean, default: false },
     allowResubmission: { type: Boolean, default: true },
@@ -63,20 +65,12 @@ const schema = new mongoose.Schema(
 
 schema.index({ createdBy: 1, status: 1 });
 schema.index({ courseId: 1, status: 1 });
+schema.index({ publishAt: 1, status: 1, deletedAt: 1 });
+schema.index({ dueAt: 1, status: 1, deletedAt: 1 });
 
-export const Assignment: Model<IAssignment> = mongoose.model<IAssignment>(
-  "Assignment",
-  schema,
-);
+export const Assignment: Model<IAssignment> = mongoose.model<IAssignment>("Assignment", schema);
 
-export type SubmissionStatus =
-  | "PENDING"
-  | "SUBMITTED"
-  | "UNDER_REVIEW"
-  | "GRADED"
-  | "RETURNED"
-  | "RESUBMITTED"
-  | "PUBLISHED";
+export type SubmissionStatus = "PENDING" | "SUBMITTED" | "UNDER_REVIEW" | "GRADED" | "RETURNED" | "RESUBMITTED" | "PUBLISHED";
 
 export interface IAssignmentSubmission extends Document {
   assignmentId: Types.ObjectId;
@@ -114,20 +108,7 @@ const submissionSchema = new mongoose.Schema(
     strengths: { type: [String], default: [] },
     improvements: { type: [String], default: [] },
     isDraft: { type: Boolean, default: true },
-    status: {
-      type: String,
-      enum: [
-        "PENDING",
-        "SUBMITTED",
-        "UNDER_REVIEW",
-        "GRADED",
-        "RETURNED",
-        "RESUBMITTED",
-        "PUBLISHED",
-      ],
-      default: "PENDING",
-      index: true,
-    },
+    status: { type: String, enum: ["PENDING", "SUBMITTED", "UNDER_REVIEW", "GRADED", "RETURNED", "RESUBMITTED", "PUBLISHED"], default: "PENDING", index: true },
     submittedReason: { type: String, default: null },
     returnReason: { type: String, default: null },
     gradedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
@@ -139,8 +120,7 @@ const submissionSchema = new mongoose.Schema(
 
 submissionSchema.index({ assignmentId: 1, studentId: 1 });
 
-export const AssignmentSubmission: Model<IAssignmentSubmission> =
-  mongoose.model<IAssignmentSubmission>("AssignmentSubmission", submissionSchema);
+export const AssignmentSubmission: Model<IAssignmentSubmission> = mongoose.model<IAssignmentSubmission>("AssignmentSubmission", submissionSchema);
 
 export interface IRubric extends Document {
   name: string;
@@ -156,17 +136,7 @@ const rubricSchema = new mongoose.Schema(
     title: { type: String, required: true, trim: true, maxlength: 120 },
     type: { type: String, enum: ["IELTS_WRITING", "IELTS_SPEAKING", "PTE"], required: true },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
-    criteria: {
-      type: [
-        {
-          key: String,
-          label: String,
-          max: Number,
-          weight: Number,
-        },
-      ],
-      default: [],
-    },
+    criteria: { type: [{ key: String, label: String, max: Number, weight: Number }], default: [] },
   },
   { timestamps: true },
 );
