@@ -18,3 +18,4 @@ export { Branding } from "./Branding";
 export { Notification, ActivityLog, AuditLog } from "./Notification";
 export { RefreshToken, PasswordResetToken, SystemSetting } from "./Token";
 export { ChatMessage } from "./ChatMessage";
+export { AIFeedback } from "./AIFeedback";
