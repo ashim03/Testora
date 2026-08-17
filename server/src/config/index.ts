@@ -8,6 +8,7 @@ export interface ServerConfig {
   nodeEnv: string;
   port: number;
   clientUrl: string;
+  allowedOrigins: string[];
   mongodbUri: string;
   jwtAccessSecret: string;
   jwtRefreshSecret: string;
@@ -49,6 +50,10 @@ export const config: ServerConfig = {
   nodeEnv: process.env.NODE_ENV || "development",
   port: Number(process.env.PORT || 5000),
   clientUrl: safeRead("CLIENT_URL", "http://localhost:5173"),
+  allowedOrigins: (process.env.ALLOWED_ORIGINS || "")
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter(Boolean),
   mongodbUri: process.env.MONGODB_URI || "",
   jwtAccessSecret: process.env.JWT_ACCESS_SECRET || "",
   jwtRefreshSecret: process.env.JWT_REFRESH_SECRET || "",

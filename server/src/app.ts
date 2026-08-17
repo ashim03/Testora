@@ -1,10 +1,10 @@
 import express, { Application, Request, RequestHandler, Response } from "express";
 import mongoose from "mongoose";
-import cors from "cors";
 import helmet from "helmet";
 import cookieParser from "cookie-parser";
 import morgan from "morgan";
 import { config } from "./config";
+import { createCorsMiddleware } from "./middleware/cors";
 import authRoutes from "./routes/authRoutes";
 import adminRoutes from "./routes/adminRoutes";
 import consultancyRoutes from "./routes/consultancyRoutes";
@@ -32,16 +32,10 @@ export function createApp(options: CreateAppOptions = {}): Application {
   app.set("trust proxy", 1);
 
   app.use(helmet());
-  app.use(
-    cors({
-      origin: (origin, cb) => {
-        const allowed = [config.clientUrl].filter(Boolean);
-        if (!origin || allowed.includes(origin)) cb(null, true);
-        else cb(new Error("Not allowed by CORS"));
-      },
-      credentials: true,
-    }),
-  );
+  // Same-origin requests (origin host === Host header) are always allowed, so a
+  // misconfigured CLIENT_URL can never lock the app out of its own frontend.
+  // Cross-origin callers must match CLIENT_URL or an entry in ALLOWED_ORIGINS.
+  app.use(createCorsMiddleware([config.clientUrl, ...config.allowedOrigins]));
   app.use(express.json({ limit: "2mb" }));
   app.use(express.urlencoded({ extended: true }));
   app.use(cookieParser(config.cookieSecret));
