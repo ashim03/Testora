@@ -1,6 +1,5 @@
 import mongoose, { type Document, type Model, type Types } from "mongoose";
-
-export type AIFeedbackType = "WRITING" | "SPEAKING";
+import type { AiErrorAnnotation, AiBandSet, AIFeedbackType } from "@testora-platform/shared";
 
 export interface IAIFeedback extends Document {
   studentId: Types.ObjectId;
@@ -19,6 +18,12 @@ export interface IAIFeedback extends Document {
   nextSteps: string[];
   disclaimer: string;
   providerModel: string;
+  attemptId?: Types.ObjectId | null;
+  examId?: Types.ObjectId | null;
+  bands?: AiBandSet | null;
+  annotations: AiErrorAnnotation[];
+  modelAnswer?: string | null;
+  advice?: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -40,8 +45,15 @@ const schema = new mongoose.Schema<IAIFeedback>({
   nextSteps: { type: [String], default: [] },
   disclaimer: { type: String, required: true },
   providerModel: { type: String, required: true },
+  attemptId: { type: mongoose.Schema.Types.ObjectId, ref: "ExamAttempt", default: null, index: true },
+  examId: { type: mongoose.Schema.Types.ObjectId, ref: "Exam", default: null, index: true },
+  bands: { type: mongoose.Schema.Types.Mixed, default: null },
+  annotations: { type: [{ start: Number, end: Number, original: String, correction: String, better: String, category: String, note: String, severity: String }], default: [] },
+  modelAnswer: { type: String, default: null },
+  advice: { type: String, default: null },
 }, { timestamps: true });
 
 schema.index({ studentId: 1, createdAt: -1 });
+schema.index({ studentId: 1, attemptId: 1 });
 
 export const AIFeedback: Model<IAIFeedback> = mongoose.model<IAIFeedback>("AIFeedback", schema);
