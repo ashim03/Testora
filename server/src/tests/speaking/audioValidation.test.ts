@@ -3,6 +3,7 @@ import {
   detectAudioFormat,
   parseWavDuration,
   parseWebmDuration,
+  parseM4aDuration,
   validateSpeakingAudio,
   formatMatchesMime,
 } from "../../utils/audioValidation";
@@ -10,6 +11,31 @@ import { ApiError } from "../../utils/helpers";
 
 // ---------------------------------------------------------------------------
 // Buffer builders
+
+function m4aBox(type: string, payload: Buffer): Buffer {
+  const size = Buffer.alloc(4);
+  size.writeUInt32BE(8 + payload.length);
+  return Buffer.concat([size, Buffer.from(type, "ascii"), payload]);
+}
+
+function buildM4aBuffer(durationSec: number, mvhdVersion = 0): Buffer {
+  const flags = Buffer.from([0, 0, 0]);
+  // mvhd v0: creation(4) modification(4) timescale(4) duration(4)
+  // mvhd v1: creation(8) modification(8) timescale(4) duration(8)
+  const mvhdPayload = mvhdVersion === 1 ? Buffer.alloc(28) : Buffer.alloc(16);
+  if (mvhdVersion === 1) {
+    mvhdPayload[0] = 1;
+    mvhdPayload.writeUInt32BE(1000, 16);
+    mvhdPayload.writeBigUInt64BE(BigInt(Math.round(durationSec * 1000)), 20);
+  } else {
+    mvhdPayload.writeUInt32BE(1000, 8);
+    mvhdPayload.writeUInt32BE(Math.round(durationSec * 1000), 12);
+  }
+  const mvhd = m4aBox("mvhd", Buffer.concat([Buffer.from([mvhdVersion]), flags, mvhdPayload]));
+  const moov = m4aBox("moov", mvhd);
+  const ftyp = m4aBox("ftyp", Buffer.from("M4A \u0000\u0000\u0000\u0000", "binary"));
+  return Buffer.concat([ftyp, moov]);
+}
 // ---------------------------------------------------------------------------
 
 function buildWavBuffer(durationSec: number, dataSize?: number, sampleRate = 8000, bitsPerSample = 16): Buffer {
@@ -119,6 +145,20 @@ describe("duration parsing (independent of the client report)", () => {
     const withoutScale = Buffer.concat([buffer.subarray(0, scaleStart), buffer.subarray(scaleStart + 12)]);
     expect(parseWebmDuration(withoutScale)).toBeCloseTo(5, 2);
   });
+  it("parses m4a duration from the moov/mvhd box (Safari-style mp4)", () => {
+    expect(parseM4aDuration(buildM4aBuffer(40.25))).toBeCloseTo(40.25, 2);
+    expect(parseM4aDuration(buildM4aBuffer(9.5, 1))).toBeCloseTo(9.5, 2);
+    expect(parseM4aDuration(Buffer.from("not an mp4", "ascii"))).toBeNull();
+  });
+  it("detects m4a signature and validates a full m4a upload", () => {
+    const m4a = buildM4aBuffer(40);
+    expect(detectAudioFormat(m4a)).toBe("m4a");
+    const result = validateSpeakingAudio(m4a, "audio/mp4", 40, baseOptions);
+    expect(result.durationSec).toBe(40);
+    // Parsed duration wins over a bogus client report.
+    const lying = validateSpeakingAudio(m4a, "audio/mp4", 120, baseOptions);
+    expect(lying.durationSec).toBe(40);
+  });
   it("returns null for non-parseable audio", () => {
     expect(parseWavDuration(Buffer.from([0x49, 0x44, 0x33, 0x00, 0x00, 0x00]))).toBeNull();
     expect(parseWavDuration(Buffer.alloc(10))).toBeNull();
@@ -163,6 +203,12 @@ describe("validateSpeakingAudio", () => {
     // Small mp3-like file with a huge claimed duration: impossible.
     const tinyMp3 = Buffer.concat([Buffer.from([0xff, 0xfb, 0x90, 0x00]), Buffer.alloc(500)]);
     expect(() => validateSpeakingAudio(tinyMp3, "audio/mpeg", 3600, baseOptions)).toThrowError(/not consistent/i);
+  });
+  it("accepts an honest low-bitrate recording on the size fallback (opus/aac ~48 kbps)", () => {
+    // Ogg-like payload of ~240 KB with a plausible 40 s claim at 48 kbps.
+    const oggish = Buffer.concat([Buffer.from("OggS", "ascii"), Buffer.alloc(240 * 1024)]);
+    const result = validateSpeakingAudio(oggish, "audio/ogg", 40, baseOptions);
+    expect(result.durationSec).toBe(40);
   });
   it("is an ApiError with a 400 status", () => {
     try {
