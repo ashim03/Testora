@@ -44,6 +44,52 @@ export async function studentProgress(studentId: string): Promise<unknown> {
   return { totalResults: results.length, averagePercentage: results.length ? Math.round(results.reduce((a, r) => a + (r.percentage || 0), 0) / results.length * 100) / 100 : 0, trend, skillAverages };
 }
 
+export async function studentProgressAnalytics(studentId: string): Promise<unknown> {
+  const results = await Result.find({ studentId, published: true })
+    .sort({ createdAt: -1 })
+    .limit(100)
+    .select("examTitle category finalScore percentage practiceBand estimatedPteScore createdAt")
+    .lean();
+
+  const byCategory: Record<string, { scores: number[]; percentages: number[]; attempts: number }> = {};
+  for (const result of results) {
+    const category = result.category || "OTHER";
+    const entry = (byCategory[category] ||= { scores: [], percentages: [], attempts: 0 });
+    entry.scores.push(Number(result.finalScore || 0));
+    entry.percentages.push(Number(result.percentage || 0));
+    entry.attempts += 1;
+  }
+
+  const skills = Object.fromEntries(Object.entries(byCategory).map(([category, data]) => {
+    const average = data.percentages.length ? data.percentages.reduce((a, b) => a + b, 0) / data.percentages.length : 0;
+    const latest = data.percentages[0] || 0;
+    const previous = data.percentages[1] || latest;
+    return [category, {
+      attempts: data.attempts,
+      averagePercentage: Math.round(average * 100) / 100,
+      latestPercentage: latest,
+      improvement: Math.round((latest - previous) * 100) / 100,
+      level: average >= 80 ? "STRONG" : average >= 60 ? "DEVELOPING" : "NEEDS_PRACTICE",
+    }];
+  }));
+
+  const percentages = results.map((r) => Number(r.percentage || 0));
+  const averagePercentage = percentages.length ? percentages.reduce((a, b) => a + b, 0) / percentages.length : 0;
+  const recent = percentages.slice(0, 5);
+  const previous = percentages.slice(5, 10);
+  const recentAverage = recent.length ? recent.reduce((a, b) => a + b, 0) / recent.length : 0;
+  const previousAverage = previous.length ? previous.reduce((a, b) => a + b, 0) / previous.length : recentAverage;
+
+  return {
+    attempts: results.length,
+    averagePercentage: Math.round(averagePercentage * 100) / 100,
+    recentAverage: Math.round(recentAverage * 100) / 100,
+    improvement: Math.round((recentAverage - previousAverage) * 100) / 100,
+    skills,
+    trend: results.map((r) => ({ date: r.createdAt, label: r.examTitle || r.category, category: r.category, percentage: r.percentage, score: r.finalScore, band: r.practiceBand, pte: r.estimatedPteScore })),
+  };
+}
+
 export async function studentFeedback(studentId: string): Promise<unknown> {
   return Feedback.find({ studentId, status: "PUBLISHED" }).sort({ createdAt: -1 }).populate("teacherId", "firstName lastName").lean();
 }
