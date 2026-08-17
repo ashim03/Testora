@@ -2,6 +2,7 @@ import { config, validateEnv } from "./config";
 import { connectDatabase } from "./config/db";
 import { createApp } from "./app";
 import { startAutoSubmitInterval } from "./jobs/autoSubmit";
+import { startAssignmentReminderInterval } from "./jobs/assignmentReminders";
 
 async function bootstrap(): Promise<void> {
   const app = createApp();
@@ -12,6 +13,7 @@ async function bootstrap(): Promise<void> {
     validateEnv();
     await connectDatabase();
     startAutoSubmitInterval();
+    startAssignmentReminderInterval();
   } catch (error) {
     console.error("[server] database/env init failed:", error);
     console.error("[server] retrying database connection every 10s");
@@ -19,6 +21,7 @@ async function bootstrap(): Promise<void> {
       try {
         await connectDatabase();
         startAutoSubmitInterval();
+        startAssignmentReminderInterval();
         clearInterval(retry);
         console.log("[server] database connected after retry");
       } catch (err) {
