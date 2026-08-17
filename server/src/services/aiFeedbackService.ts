@@ -10,6 +10,10 @@ const ANNOTATION_SEVERITIES = new Set(["low", "medium", "high"]);
 const MODEL = process.env.AI_MODEL || "qwen-plus";
 const BASE_URL = (process.env.AI_BASE_URL || "https://api.openai.com/v1").replace(/\/$/, "");
 const API_URL = `${BASE_URL}/responses`;
+// Qwen-family MaaS gateways (Aliyun/DashScope) default to "thinking" mode,
+// which burns most of the latency budget on hidden reasoning tokens. Disable
+// it unless the operator explicitly opts in via AI_ENABLE_THINKING=true.
+const DISABLE_THINKING = /maas|aliyuncs|dashscope|qwen/i.test(BASE_URL) && process.env.AI_ENABLE_THINKING !== "true";
 const clamp = (value: number) => Math.max(0, Math.min(100, Math.round(value)));
 const clampTrend = (value: number) => Math.max(-100, Math.min(100, Math.round(value)));
 
@@ -50,9 +54,16 @@ export async function evaluateLanguage(type: FeedbackType, text: string, prompt?
   const normalized = text.trim();
   if (normalized.length < 20) throw new ApiError(400, "Response is too short for meaningful feedback");
   if (normalized.length > 12000) throw new ApiError(400, "Response exceeds the 12,000 character limit");
-  const rubric = type === "WRITING" ? "Evaluate grammar, vocabulary, coherence/cohesion, task response, and organization." : "Evaluate grammar, vocabulary, coherence, fluency, and speaking delivery from the supplied transcript. Do not claim to assess pronunciation from text alone.";
-  const input = `You are an English-learning assessment assistant. ${rubric}\nReturn ONLY valid JSON with this exact shape: {"overallScore":0,"skillScores":{"grammar":0,"vocabulary":0,"coherence":0,"fluency":0,"taskResponse":0},"strengths":[],"improvements":[],"grammar":[],"vocabulary":[],"coherence":[],"fluency":[],"pronunciation":[],"nextSteps":[],"disclaimer":"","bands":{"ielts":null,"pte":null},"annotations":[{"start":0,"end":0,"original":"","correction":"","better":"","category":"","note":"","severity":"low"}],"modelAnswer":null,"advice":null}. skillScores values and overallScore must be 0-100. bands.ielts is 0-9, bands.pte is 0-90; set to null unless confident (formative estimate only, never an official score). annotations are inline corrections: character offsets start/end relative to the student response, original is the text being corrected, correction is the fix, better is an optional stronger alternative, category is one of grammar/vocabulary/coherence/fluency/task_response/spelling/punctuation, severity is low/medium/high. modelAnswer is an optional strong model response to the prompt; advice is concise personalized study advice. Keep each array to at most 4 concise items (annotations up to 10). Do not invent facts. This is formative feedback, not an official IELTS/PTE score.\n${prompt ? `Task prompt: ${prompt}\n` : ""}Student ${type.toLowerCase()} response:\n${normalized}`;
-  const response = await fetch(API_URL, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${process.env.AI_API_KEY}` }, body: JSON.stringify({ model: MODEL, input }), signal: AbortSignal.timeout(30000) });
+  const rubric = type === "WRITING" ? "Evaluate grammar, vocabulary, coherence/cohesion, task response, and organization." : "Evaluate grammar, vocabulary, coherence, fluency, task response (how fully the response addresses the task prompt, staying on topic), and speaking delivery from the supplied transcript. Do not claim to assess pronunciation from text alone. Score task response into skillScores.taskResponse (0-100); if no task prompt is provided, set skillScores.taskResponse to null.";
+  const input = `You are an English-learning assessment assistant. ${rubric}\nReturn ONLY valid JSON with this exact shape: {"overallScore":0,"skillScores":{"grammar":0,"vocabulary":0,"coherence":0,"fluency":0,"taskResponse":0},"strengths":[],"improvements":[],"grammar":[],"vocabulary":[],"coherence":[],"fluency":[],"pronunciation":[],"nextSteps":[],"disclaimer":"","bands":{"ielts":null,"pte":null},"annotations":[{"start":0,"end":0,"original":"","correction":"","better":"","category":"","note":"","severity":"low"}],"modelAnswer":null,"advice":null}. skillScores values and overallScore must be 0-100. bands.ielts is 0-9, bands.pte is 0-90; set to null unless confident (formative estimate only, never an official score). annotations are inline corrections: character offsets start/end relative to the student response, original is the text being corrected, correction is the fix, better is an optional stronger alternative, category is one of grammar/vocabulary/coherence/fluency/task_response/spelling/punctuation, severity is low/medium/high. modelAnswer is an optional concise model response of at most 80 words; advice is concise personalized study advice of at most 50 words. Keep each array to at most 4 concise items (annotations up to 10). Do not invent facts. This is formative feedback, not an official IELTS/PTE score.\n${prompt ? `Task prompt: ${prompt}\n` : ""}Student ${type.toLowerCase()} response:\n${normalized}`;
+  let response: Response;
+  try {
+    response = await fetch(API_URL, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${process.env.AI_API_KEY}` }, body: JSON.stringify(DISABLE_THINKING ? { model: MODEL, input, enable_thinking: false } : { model: MODEL, input }), signal: AbortSignal.timeout(120000) });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "TimeoutError") throw new ApiError(504, "AI feedback is taking too long right now. Please try again in a moment.");
+    console.error("AI feedback request failed", error instanceof Error ? error.message : error);
+    throw new ApiError(502, "AI feedback service is temporarily unavailable");
+  }
   if (!response.ok) { console.error("AI feedback request failed", response.status); throw new ApiError(502, "AI feedback service is temporarily unavailable"); }
   const output = extractOutputText(await response.json() as { output?: Array<{ type?: string; content?: Array<{ type?: string; text?: string }> }> });
   if (!output) throw new ApiError(502, "AI feedback returned no result");

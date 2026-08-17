@@ -7,7 +7,7 @@ import { getMediaService, localAudioPath } from "./mediaService";
 import { getSpeechToTextProvider } from "./stt";
 import { type SpeechToTextProvider, SttUnavailableError } from "./stt/speechToTextProvider";
 import { validateSpeakingAudio, type AudioFormat } from "../utils/audioValidation";
-import { analyzeTranscript, type SpeakingAnalysisResult } from "./speakingAnalysisService";
+import { analyzeTranscript, mergeSpeakingScores, OFF_TOPIC_WEAKNESS, OFF_TOPIC_RECOMMENDATION, type SpeakingAnalysisResult } from "./speakingAnalysisService";
 import { evaluateLanguage } from "./aiFeedbackService";
 import { ApiError } from "../utils/helpers";
 import type { ISpeakingAttempt, ISpeakingReport, ISpeakingScoreSet } from "../models/SpeakingAttempt";
@@ -219,19 +219,16 @@ export async function processSpeakingAttempt(attemptId: string): Promise<ISpeaki
       console.error("[speaking] AI evaluation failed; using heuristic estimate", error instanceof Error ? error.message : error);
     }
 
-    const scores: ISpeakingScoreSet = aiFeedback
-      ? {
-          overall: aiFeedback.overallScore,
-          fluency: aiFeedback.skillScores.fluency ?? analysis.scores.fluency,
-          grammar: aiFeedback.skillScores.grammar ?? analysis.scores.grammar,
-          vocabulary: aiFeedback.skillScores.vocabulary ?? analysis.scores.vocabulary,
-          coherence: aiFeedback.skillScores.coherence ?? analysis.scores.coherence,
-        }
-      : analysis.scores;
+    const merged = mergeSpeakingScores(analysis, aiFeedback, Boolean(attempt.prompt));
+    const scores: ISpeakingScoreSet = merged.scores;
 
     const strengths = aiFeedback?.strengths?.length ? aiFeedback.strengths.slice(0, 4) : analysis.qualitative.strengths;
-    const weaknesses = aiFeedback?.improvements?.length ? aiFeedback.improvements.slice(0, 4) : analysis.qualitative.weaknesses;
-    const recommendations = aiFeedback?.nextSteps?.length ? aiFeedback.nextSteps.slice(0, 4) : analysis.qualitative.recommendations;
+    let weaknesses = aiFeedback?.improvements?.length ? aiFeedback.improvements.slice(0, 4) : analysis.qualitative.weaknesses;
+    let recommendations = aiFeedback?.nextSteps?.length ? aiFeedback.nextSteps.slice(0, 4) : analysis.qualitative.recommendations;
+    if (merged.offTopic) {
+      if (!weaknesses.some((w) => w.includes("off topic") || w.includes("off-topic"))) weaknesses = [...weaknesses, OFF_TOPIC_WEAKNESS].slice(0, 4);
+      if (!recommendations.some((r) => r.includes("key words in the task"))) recommendations = [...recommendations, OFF_TOPIC_RECOMMENDATION].slice(0, 4);
+    }
 
     const report: ISpeakingReport = {
       overallScore: scores.overall,
@@ -242,6 +239,8 @@ export async function processSpeakingAttempt(attemptId: string): Promise<ISpeaki
       disclaimer,
       providerModel,
       estimate,
+      offTopic: merged.offTopic,
+      taskResponseNote: merged.taskResponseNote,
     };
 
     attempt.transcript = transcript;

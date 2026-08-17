@@ -256,7 +256,7 @@ export function SpeakingPracticePage() {
       <div>
         <h1 className="text-2xl font-bold">Speaking practice</h1>
         <p className="text-sm text-muted-foreground">
-          Record yourself answering a speaking task. Your audio is transcribed, analyzed and scored — including fluency, grammar, vocabulary and coherence.
+          Record yourself answering a speaking task. Your audio is transcribed, analyzed and scored — including fluency, grammar, vocabulary, coherence and task relevance (staying on topic).
         </p>
       </div>
 
