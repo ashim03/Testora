@@ -29,5 +29,7 @@ Thumbs.db
 # Misc
 *.tsbuildinfo
 .turbo/
+test-results/
+playwright-report/
 
 .vercel

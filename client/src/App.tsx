@@ -54,6 +54,8 @@ const StudentAssignments = lazy(() => import("./pages/student/StudentAssignments
 const StudentResults = lazy(() => import("./pages/student/StudentResults").then((m) => ({ default: m.StudentResults })));
 const StudentFeedback = lazy(() => import("./pages/student/StudentFeedback").then((m) => ({ default: m.StudentFeedback })));
 const StudentProgress = lazy(() => import("./pages/student/StudentProgress").then((m) => ({ default: m.StudentProgress })));
+const SpeakingPracticePage = lazy(() => import("./pages/student/SpeakingPracticePage").then((m) => ({ default: m.SpeakingPracticePage })));
+const SpeakingResultPage = lazy(() => import("./pages/student/SpeakingResultPage").then((m) => ({ default: m.SpeakingResultPage })));
 const StudentNotifications = lazy(() => import("./pages/student/StudentNotifications").then((m) => ({ default: m.StudentNotifications })));
 const ProfilePage = lazy(() => import("./pages/account/ProfilePage").then((m) => ({ default: m.ProfilePage })));
 const SettingsPage = lazy(() => import("./pages/account/SettingsPage").then((m) => ({ default: m.SettingsPage })));
@@ -151,6 +153,8 @@ export function App() {
         <Route path="/student/results" element={withLayout("STUDENT", <StudentResults />)} />
         <Route path="/student/feedback" element={withLayout("STUDENT", <StudentFeedback />)} />
         <Route path="/student/progress" element={withLayout("STUDENT", <StudentProgress />)} />
+        <Route path="/student/speaking" element={withLayout("STUDENT", <SpeakingPracticePage />)} />
+        <Route path="/student/speaking/result/:attemptId" element={withLayout("STUDENT", <SpeakingResultPage />)} />
         <Route path="/student/notifications" element={withLayout("STUDENT", <StudentNotifications />)} />
         <Route path="/student/profile" element={withLayout("STUDENT", <ProfilePage />)} />
         <Route path="/student/settings" element={withLayout("STUDENT", <SettingsPage />)} />

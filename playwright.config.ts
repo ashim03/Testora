@@ -12,7 +12,15 @@ export default defineConfig({
     trace: "on-first-retry",
     screenshot: "only-on-failure",
   },
-  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
+  projects: [
+    {
+      name: "chromium",
+      use: {
+        ...devices["Desktop Chrome"],
+        launchOptions: { args: ["--use-fake-device-for-media-stream", "--use-fake-ui-for-media-stream"] },
+      },
+    },
+  ],
   webServer: {
     command: "npm run build -w client && npm run preview -w client -- --host 127.0.0.1 --port 4173",
     url: "http://127.0.0.1:4173",

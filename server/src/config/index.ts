@@ -17,6 +17,12 @@ export interface ServerConfig {
   maxFileSizeMb: number;
   audioMaxSizeMb: number;
   uploadsDir: string;
+  speaking: {
+    maxDurationSec: number;
+    minDurationSec: number;
+    maxSizeMb: number;
+    keepAudio: boolean;
+  };
   isProduction: boolean;
   cloudinary: {
     cloudName: string;
@@ -52,6 +58,12 @@ export const config: ServerConfig = {
   maxFileSizeMb: Number(process.env.MAX_FILE_SIZE_MB || 20),
   audioMaxSizeMb: Number(process.env.AUDIO_MAX_SIZE_MB || 30),
   uploadsDir: process.env.UPLOADS_DIR || "uploads",
+  speaking: {
+    maxDurationSec: Number(process.env.SPEAKING_MAX_DURATION_SEC || 180),
+    minDurationSec: Number(process.env.SPEAKING_MIN_DURATION_SEC || 5),
+    maxSizeMb: Number(process.env.SPEAKING_MAX_SIZE_MB || 30),
+    keepAudio: String(process.env.SPEAKING_KEEP_AUDIO || "").toLowerCase() === "true",
+  },
   isProduction: process.env.NODE_ENV === "production",
   cloudinary: {
     cloudName: process.env.CLOUDINARY_CLOUD_NAME || "",

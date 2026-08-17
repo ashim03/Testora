@@ -178,6 +178,89 @@ export const SECTIONAL_PARTS: Record<string, { label: string; icon: string; part
 
 export const SECTIONAL_CATEGORIES = Object.keys(SECTIONAL_PARTS);
 
+export const SPEAKING_TASK_TYPES = [
+  "FREE_PRACTICE",
+  "IELTS_PART_1",
+  "IELTS_PART_2",
+  "IELTS_PART_3",
+  "PTE_READ_ALOUD",
+  "PTE_RETELL_LECTURE",
+  "PTE_DESCRIBE_IMAGE",
+] as const;
+
+export const SPEAKING_TASK_LABELS: Record<(typeof SPEAKING_TASK_TYPES)[number], string> = {
+  FREE_PRACTICE: "Free practice",
+  IELTS_PART_1: "IELTS Speaking Part 1",
+  IELTS_PART_2: "IELTS Speaking Part 2",
+  IELTS_PART_3: "IELTS Speaking Part 3",
+  PTE_READ_ALOUD: "PTE Read Aloud",
+  PTE_RETELL_LECTURE: "PTE Retell Lecture",
+  PTE_DESCRIBE_IMAGE: "PTE Describe Image",
+};
+
+export const SPEAKING_SKILLS = ["overall", "fluency", "grammar", "vocabulary", "coherence"] as const;
+export const SPEAKING_SKILL_LABELS: Record<string, string> = {
+  overall: "Overall",
+  fluency: "Fluency",
+  grammar: "Grammar",
+  vocabulary: "Vocabulary",
+  coherence: "Coherence",
+};
+
+export const FILLER_WORDS = [
+  "um",
+  "uh",
+  "er",
+  "ah",
+  "hmm",
+  "like",
+  "you know",
+  "i mean",
+  "so yeah",
+  "well",
+  "basically",
+  "actually",
+  "kind of",
+  "sort of",
+  "you see",
+  "right",
+  "okay",
+] as const;
+
+export const DISCOURSE_MARKERS = [
+  "first",
+  "firstly",
+  "second",
+  "secondly",
+  "third",
+  "thirdly",
+  "finally",
+  "next",
+  "then",
+  "after that",
+  "because",
+  "so",
+  "therefore",
+  "however",
+  "but",
+  "although",
+  "for example",
+  "for instance",
+  "in addition",
+  "moreover",
+  "furthermore",
+  "on the other hand",
+  "in conclusion",
+  "as a result",
+  "meanwhile",
+  "afterwards",
+  "also",
+  "in my opinion",
+  "i think",
+  "i believe",
+] as const;
+
+
 export const IELTS_WRITING_RUBRIC = [
   { key: "taskResponse", label: "Task Response", max: 9, weight: 25 },
   { key: "coherence", label: "Coherence and Cohesion", max: 9, weight: 25 },

@@ -17,6 +17,7 @@ import mediaRoutes from "./routes/mediaRoutes";
 import brandingRoutes from "./routes/brandingRoutes";
 import notificationRoutes from "./routes/notificationRoutes";
 import chatRoutes from "./routes/chatRoutes";
+import speakingRoutes from "./routes/speakingRoutes";
 import { apiLimiter } from "./middleware/rateLimit";
 import { sanitizeMongoQuery, sanitizePagination } from "./middleware/sanitize";
 import { notFound, errorHandler } from "./middleware/error";
@@ -83,6 +84,7 @@ export function createApp(options: CreateAppOptions = {}): Application {
   api.use("/branding", brandingRoutes);
   api.use("/notifications", notificationRoutes);
   api.use("/chat", chatRoutes);
+  api.use("/speaking", speakingRoutes);
 
   app.use("/api", api);
   app.use(notFound);
