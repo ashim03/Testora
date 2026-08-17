@@ -3,6 +3,7 @@ import * as userService from "../services/userService";
 import * as teacherService from "../services/teacherService";
 import * as reportService from "../services/reportService";
 import * as questionBankService from "../services/questionBankService";
+import * as leaderboardService from "../services/leaderboardService";
 import { ApiError, asyncHandler } from "../utils/helpers";
 import { studentIdsOfTeacher } from "../services/userService";
 
@@ -17,6 +18,7 @@ export const listBatches = asyncHandler(async (req: Request, res: Response) => {
 export const createBatch = asyncHandler(async (req: Request, res: Response) => { if (!req.user) throw new ApiError(401, "Authentication required"); res.status(201).json({ success: true, message: "Batch created", data: await teacherService.createBatch(req.body, req.user.id) }); });
 export const updateBatch = asyncHandler(async (req: Request, res: Response) => { if (!req.user) throw new ApiError(401, "Authentication required"); res.json({ success: true, message: "Batch updated", data: await teacherService.updateBatch(String(req.params.id), req.body, req.user.id) }); });
 export const addStudentsToBatch = asyncHandler(async (req: Request, res: Response) => { if (!req.user) throw new ApiError(401, "Authentication required"); await teacherService.addStudentsToBatch(String(req.params.id), req.body.studentIds, req.user.id); res.json({ success: true, message: "Students added to batch" }); });
+export const cohortAnalytics = asyncHandler(async (req: Request, res: Response) => { if (!req.user) throw new ApiError(401, "Authentication required"); const data = await leaderboardService.cohortAnalytics(req.user.id, req.query.batchId ? String(req.query.batchId) : undefined); res.json({ success: true, message: "Cohort analytics", data }); });
 export const reports = asyncHandler(async (req: Request, res: Response) => { if (!req.user) throw new ApiError(401, "Authentication required"); res.json({ success: true, message: "Teacher report", data: await reportService.teacherReport(req.user.id) }); });
 export const exportQuestionBank = asyncHandler(async (req: Request, res: Response) => { if (!req.user) throw new ApiError(401, "Authentication required"); const format = req.query.format === "xlsx" ? "xlsx" : "csv"; const file = await questionBankService.exportQuestions(req.user.id, format); res.setHeader("Content-Type", file.contentType); res.setHeader("Content-Disposition", `attachment; filename="${file.filename}"`); res.send(file.buffer); });
 export const importQuestionBank = asyncHandler(async (req: Request, res: Response) => { if (!req.user) throw new ApiError(401, "Authentication required"); const file = req.file as Express.Multer.File | undefined; if (!file) throw new ApiError(400, "CSV or XLSX file is required"); const result = await questionBankService.importQuestions(req.user.id, file); if (result.failed) return res.status(400).json({ success: false, message: "Question bank import failed validation", data: result }); res.status(201).json({ success: true, message: `${result.created} questions imported`, data: result }); });
