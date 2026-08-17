@@ -17,7 +17,7 @@ export interface IAIFeedback extends Document {
   pronunciation: string[];
   nextSteps: string[];
   disclaimer: string;
-  model: string;
+  providerModel: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -37,7 +37,7 @@ const schema = new mongoose.Schema<IAIFeedback>({
   pronunciation: { type: [String], default: [] },
   nextSteps: { type: [String], default: [] },
   disclaimer: { type: String, required: true },
-  model: { type: String, required: true },
+  providerModel: { type: String, required: true },
 }, { timestamps: true });
 
 schema.index({ studentId: 1, createdAt: -1 });
