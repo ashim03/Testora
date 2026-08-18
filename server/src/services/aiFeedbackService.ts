@@ -1,4 +1,4 @@
-import { AIFeedback, LearningProfile } from "../models";
+import { AIFeedback, ExamAnswer, ExamAttempt, Exam, LearningProfile, Question } from "../models";
 import type { ISkillMastery } from "../models/LearningProfile";
 import type { AiAnalysisResult, AiErrorAnnotation, AIFeedbackType } from "@testora-platform/shared";
 import { ApiError } from "../utils/helpers";
@@ -72,11 +72,90 @@ export async function evaluateLanguage(type: FeedbackType, text: string, prompt?
   const feedback = parseJson(output, normalized.length); feedback.disclaimer ||= "AI-generated formative feedback; not an official IELTS/PTE score."; return feedback;
 }
 
-export async function createAIFeedback(studentId: string, type: FeedbackType, text: string, prompt?: string, context?: { attemptId?: string | null; examId?: string | null }): Promise<AiFeedback & { id: string; createdAt: Date }> {
+export async function createAIFeedback(studentId: string, type: FeedbackType, text: string, prompt?: string, context?: { attemptId?: string | null; examId?: string | null; questionId?: string | null }): Promise<AiFeedback & { id: string; createdAt: Date }> {
   const feedback = await evaluateLanguage(type, text, prompt);
-  const saved = await AIFeedback.create({ studentId, type, prompt: prompt || null, submission: text.trim(), ...feedback, providerModel: MODEL, attemptId: context?.attemptId || null, examId: context?.examId || null });
+  const saved = await AIFeedback.create({ studentId, type, prompt: prompt || null, submission: text.trim(), ...feedback, providerModel: MODEL, attemptId: context?.attemptId || null, examId: context?.examId || null, questionId: context?.questionId || null });
   await updateLearningProfile(studentId, feedback.skillScores);
   return { ...feedback, id: String(saved._id), createdAt: saved.createdAt };
+}
+
+export interface AttemptQuestionFeedback {
+  questionId: string;
+  questionTitle: string;
+  prompt: string | null;
+  answer: string;
+  feedback: AiFeedback & { id: string; createdAt: Date } | null;
+  error: string | null;
+  reused: boolean;
+}
+
+export interface AttemptAICheckResult {
+  attemptId: string;
+  examId: string;
+  examTitle: string;
+  questions: AttemptQuestionFeedback[];
+}
+
+const WRITING_QUESTION_TYPES = new Set(["ESSAY", "LETTER", "SUMMARIZE_WRITTEN_TEXT"]);
+
+function feedbackShape(doc: Record<string, unknown>): AiFeedback & { id: string; createdAt: Date } {
+  const { _id, createdAt, ...rest } = doc;
+  return { ...(rest as unknown as AiFeedback), id: String(_id), createdAt: new Date(createdAt as string) };
+}
+
+export async function checkAttemptWithAI(studentId: string, attemptId: string): Promise<AttemptAICheckResult> {
+  const attempt = await ExamAttempt.findOne({ _id: attemptId, studentId });
+  if (!attempt) throw new ApiError(404, "Attempt not found");
+  if (!["SUBMITTED", "UNDER_REVIEW", "GRADED", "PUBLISHED"].includes(attempt.status)) {
+    throw new ApiError(400, "Submit the attempt before requesting AI feedback");
+  }
+  const exam = await Exam.findById(attempt.examId).select("title sections questionIds").lean();
+  if (!exam) throw new ApiError(404, "Exam not found");
+
+  const orderedIds = [...exam.sections.flatMap((s) => s.questionIds ?? []), ...(exam.questionIds ?? [])].map(String);
+  const answers = await ExamAnswer.find({ attemptId, answered: true }).lean();
+  const qids = answers.filter((a) => typeof a.answer === "string" && a.answer.trim().length > 0).map((a) => a.questionId);
+  const questions = qids.length ? await Question.find({ _id: { $in: qids } }).select("type title instructions maxWordLimit minWordLimit").lean() : [];
+  const qByTitle = new Map(questions.map((q) => [String(q._id), q]));
+
+  const existing = qids.length
+    ? await AIFeedback.find({ attemptId, questionId: { $in: qids } }).select("questionId prompt submission overallScore skillScores bands annotations modelAnswer advice strengths improvements grammar vocabulary coherence fluency pronunciation nextSteps disclaimer providerModel createdAt").lean()
+    : [];
+  const existingByQ = new Map(existing.map((doc) => [String(doc.questionId), doc]));
+
+  const work: AttemptQuestionFeedback[] = [];
+  for (const qid of orderedIds.length ? orderedIds : qids.map(String)) {
+    const answer = answers.find((a) => String(a.questionId) === qid);
+    if (!answer || typeof answer.answer !== "string") continue;
+    const text = answer.answer.trim();
+    if (text.length < 20) continue;
+    const question = qByTitle.get(qid);
+    if (!question || !WRITING_QUESTION_TYPES.has(String(question.type))) continue;
+    const parts = [question.title, question.instructions].filter(Boolean);
+    if (question.minWordLimit || question.maxWordLimit) {
+      parts.push(`Word limit: ${question.minWordLimit ? `minimum ${question.minWordLimit}` : ""}${question.minWordLimit && question.maxWordLimit ? "-" : ""}${question.maxWordLimit ? `maximum ${question.maxWordLimit}` : ""}`);
+    }
+    const prompt = parts.length ? parts.join("\n") : null;
+    const cached = existingByQ.get(qid);
+    work.push(cached
+      ? { questionId: qid, questionTitle: question.title, prompt, answer: text, feedback: feedbackShape(cached), error: null, reused: true }
+      : { questionId: qid, questionTitle: question.title, prompt, answer: text, feedback: null, error: null, reused: false });
+  }
+
+  await Promise.all(work.filter((w) => !w.reused).map(async (w) => {
+    try {
+      const feedback = await createAIFeedback(studentId, "WRITING", w.answer.slice(0, 12000), w.prompt ?? undefined, { attemptId, examId: String(attempt.examId), questionId: w.questionId });
+      w.feedback = feedback;
+      w.error = null;
+    } catch (error) {
+      console.error("Attempt AI check failed for question", w.questionId, error instanceof Error ? error.message : error);
+      w.error = error instanceof ApiError ? error.message : "AI feedback service is temporarily unavailable";
+    }
+  }));
+
+  if (work.length > 0 && work.every((w) => w.error)) throw new ApiError(502, "AI feedback service is temporarily unavailable. Please try again in a moment.");
+
+  return { attemptId: String(attempt._id), examId: String(attempt.examId), examTitle: exam.title, questions: work };
 }
 
 export async function listAIFeedback(studentId: string, limit = 20) {

@@ -22,6 +22,7 @@ router.get("/attempts/:id", student.getAttempt);
 router.patch("/attempts/:id/answers", validateRequest(answersSchema as never), student.saveAnswers);
 router.post("/attempts/:id/integrity-event", validateRequest(integrityEventSchema as never), student.integrityEvent);
 router.post("/attempts/:id/submit", submitLimiter, student.submitAttempt);
+router.post("/attempts/:id/ai-check", submitLimiter, student.aiCheckAttempt);
 router.get("/assignments", student.listAssignments);
 router.get("/assignments/:id", student.getAssignment);
 router.post("/assignments/:id/submit", submitLimiter, student.submitAssignment);

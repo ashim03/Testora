@@ -20,6 +20,7 @@ export interface IAIFeedback extends Document {
   providerModel: string;
   attemptId?: Types.ObjectId | null;
   examId?: Types.ObjectId | null;
+  questionId?: Types.ObjectId | null;
   bands?: AiBandSet | null;
   annotations: AiErrorAnnotation[];
   modelAnswer?: string | null;
@@ -47,6 +48,7 @@ const schema = new mongoose.Schema<IAIFeedback>({
   providerModel: { type: String, required: true },
   attemptId: { type: mongoose.Schema.Types.ObjectId, ref: "ExamAttempt", default: null, index: true },
   examId: { type: mongoose.Schema.Types.ObjectId, ref: "Exam", default: null, index: true },
+  questionId: { type: mongoose.Schema.Types.ObjectId, ref: "Question", default: null, index: true },
   bands: { type: mongoose.Schema.Types.Mixed, default: null },
   annotations: { type: [{ start: Number, end: Number, original: String, correction: String, better: String, category: String, note: String, severity: String }], default: [] },
   modelAnswer: { type: String, default: null },
@@ -55,5 +57,6 @@ const schema = new mongoose.Schema<IAIFeedback>({
 
 schema.index({ studentId: 1, createdAt: -1 });
 schema.index({ studentId: 1, attemptId: 1 });
+schema.index({ attemptId: 1, questionId: 1 }, { unique: true, partialFilterExpression: { questionId: { $type: "objectId" } } });
 
 export const AIFeedback: Model<IAIFeedback> = mongoose.model<IAIFeedback>("AIFeedback", schema);
