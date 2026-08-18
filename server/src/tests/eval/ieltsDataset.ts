@@ -93,11 +93,17 @@ export const EVAL_SPEAKING: EvalSpeakingSample[] = [
 export interface EvalSummary {
   writing: Array<{ name: string; expected: number; predicted: number | null; error: number | null; expectedPte: number | null; predictedPte: number | null; pteError: number | null; skillScores: Record<string, number> }>;
   speaking: Array<{ name: string; expected: number; predicted: number | null; error: number | null; expectedPte: number | null; predictedPte: number | null; pteError: number | null; fluency: number; grammar: number; vocabulary: number; coherence: number; taskResponse: number | null }>;
+  syntheticWriting: Array<{ name: string; expected: number; predicted: number | null; error: number | null; expectedPte: number | null; predictedPte: number | null; pteError: number | null; skillScores: Record<string, number> }>;
+  syntheticSpeaking: Array<{ name: string; expected: number; predicted: number | null; error: number | null; expectedPte: number | null; predictedPte: number | null; pteError: number | null; fluency: number; grammar: number; vocabulary: number; coherence: number; taskResponse: number | null }>;
   graded: Array<{ attemptId: string; teacherPercent: number; aiOverall: number; bandError: number | null; ielts: number | null; pte: number | null }>;
   writingMae: number | null;
   speakingMae: number | null;
   writingPteMae?: number | null;
   speakingPteMae?: number | null;
+  syntheticWritingMae?: number | null;
+  syntheticSpeakingMae?: number | null;
+  syntheticWritingPteMae?: number | null;
+  syntheticSpeakingPteMae?: number | null;
   gradedBandMae: number | null;
   ranAt: string;
 }

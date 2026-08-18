@@ -33,3 +33,7 @@ test-results/
 playwright-report/
 
 .vercel
+
+# Generated eval/finetune artifacts
+server/eval-reports/
+server/finetune/
