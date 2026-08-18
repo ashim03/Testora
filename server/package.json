@@ -15,7 +15,8 @@
     "lint": "eslint src",
     "lint:fix": "eslint src --fix",
     "test": "vitest run",
-    "eval:ai": "tsx src/scripts/evalAI.ts"
+    "eval:ai": "tsx src/scripts/evalAI.ts",
+    "build:ft": "tsx src/scripts/buildFinetuneDataset.ts"
   },
   "dependencies": {
     "@testora-platform/shared": "file:../shared",

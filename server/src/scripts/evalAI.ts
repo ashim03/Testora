@@ -3,39 +3,90 @@ import fs from "fs";
 import path from "path";
 import mongoose from "mongoose";
 import { EVAL_SPEAKING, EVAL_WRITING, type EvalSummary } from "../tests/eval/ieltsDataset";
+import { SYNTHETIC_SPEAKING, SYNTHETIC_WRITING } from "../tests/eval/syntheticDataset";
 import { applyWritingTaskResponse, evaluateLanguage } from "../services/aiFeedbackService";
 import { analyzeTranscript, mergeSpeakingScores } from "../services/speakingAnalysisService";
 import { AIFeedback } from "../models/AIFeedback";
 import { ExamAttempt } from "../models/ExamAttempt";
-import { Exam } from "../models/Exam";
 
 const absError = (expected: number, predicted: number | null | undefined) =>
   typeof predicted === "number" ? Math.abs(expected - predicted) : null;
 
-async function runLabeledSamples(summary: EvalSummary) {
-  console.log("--- Writing (expected band vs predicted) ---");
-  for (const sample of EVAL_WRITING) {
+interface LabeledSample {
+  name: string;
+  prompt: string;
+  expectedIelts: number;
+  expectedPte?: number | null;
+  essay?: string;
+  transcript?: string;
+  durationSec?: number;
+}
+
+interface EvalRow {
+  name: string;
+  expected: number;
+  predicted: number | null;
+  error: number | null;
+  expectedPte: number | null;
+  predictedPte: number | null;
+  pteError: number | null;
+}
+
+interface FeedbackView {
+  skillScores: Record<string, number>;
+  mergedScores?: {
+    fluency: number;
+    grammar: number;
+    vocabulary: number;
+    coherence: number;
+    taskResponse: number | null;
+  };
+}
+
+const maeOf = (errors: Array<number | null>): number | null => {
+  const valid = errors.filter((e): e is number => e !== null);
+  return valid.length ? Math.round((valid.reduce((a, b) => a + b, 0) / valid.length) * 100) / 100 : null;
+};
+
+const commonRow = (sample: LabeledSample, predicted: number | null, predictedPte: number | null, error: number | null, pteError: number | null): EvalRow => ({
+  name: sample.name,
+  expected: sample.expectedIelts,
+  predicted,
+  error,
+  expectedPte: sample.expectedPte ?? null,
+  predictedPte,
+  pteError,
+});
+
+async function runLabeledSamples<T extends EvalRow>(
+  samples: LabeledSample[],
+  dest: T[],
+  makeRow: (row: EvalRow, view: FeedbackView) => T,
+  sectionLabel: string
+) {
+  console.log(`--- ${sectionLabel}: Writing (expected band vs predicted) ---`);
+  for (const sample of samples.filter((s) => s.essay != null)) {
     try {
-      let feedback = await evaluateLanguage("WRITING", sample.essay, sample.prompt);
+      let feedback = await evaluateLanguage("WRITING", sample.essay!, sample.prompt);
       const applied = applyWritingTaskResponse(feedback, sample.prompt);
       feedback = applied.feedback;
       const predicted = feedback.bands?.ielts ?? null;
       const predictedPte = feedback.bands?.pte ?? null;
       const error = absError(sample.expectedIelts, predicted);
       const pteError = sample.expectedPte != null ? absError(sample.expectedPte, predictedPte) : null;
-      summary.writing.push({ name: sample.name, expected: sample.expectedIelts, predicted, error, expectedPte: sample.expectedPte ?? null, predictedPte, pteError, skillScores: feedback.skillScores });
+      dest.push(makeRow(commonRow(sample, predicted, predictedPte, error, pteError), { skillScores: feedback.skillScores }));
       console.log(`${sample.name.padEnd(16)} expected ${sample.expectedIelts} → predicted ${predicted ?? "null"}  (err ${error ?? "?"})${sample.expectedPte != null ? `  PTE expected ${sample.expectedPte} → ${predictedPte ?? "null"} (err ${pteError ?? "?"})` : ""}  scores ${JSON.stringify(feedback.skillScores)}`);
     } catch (error) {
-      summary.writing.push({ name: sample.name, expected: sample.expectedIelts, predicted: null, error: null, expectedPte: sample.expectedPte ?? null, predictedPte: null, pteError: null, skillScores: {} });
+      dest.push(makeRow(commonRow(sample, null, null, null, null), { skillScores: {} }));
       console.error(`${sample.name}: FAILED`, error instanceof Error ? error.message : error);
     }
   }
 
-  console.log("\n--- Speaking (expected band vs predicted, fluency measured) ---");
-  for (const sample of EVAL_SPEAKING) {
+  console.log(`\n--- ${sectionLabel}: Speaking (expected band vs predicted, fluency measured) ---`);
+  for (const sample of samples.filter((s) => s.transcript != null)) {
     try {
-      const analysis = analyzeTranscript({ text: sample.transcript, durationSec: sample.durationSec });
-      const ai = await evaluateLanguage("SPEAKING", sample.transcript, sample.prompt, {
+      const analysis = analyzeTranscript({ text: sample.transcript!, durationSec: sample.durationSec ?? 40 });
+      const ai = await evaluateLanguage("SPEAKING", sample.transcript!, sample.prompt, {
         words: analysis.metrics.words,
         wpm: analysis.metrics.wpm,
         fillerWordCount: analysis.metrics.fillerWordCount,
@@ -46,28 +97,40 @@ async function runLabeledSamples(summary: EvalSummary) {
       const predictedPte = ai.bands?.pte ?? null;
       const error = absError(sample.expectedIelts, predicted);
       const pteError = sample.expectedPte != null ? absError(sample.expectedPte, predictedPte) : null;
-      summary.speaking.push({
-        name: sample.name,
-        expected: sample.expectedIelts,
-        predicted,
-        error,
-        expectedPte: sample.expectedPte ?? null,
-        predictedPte,
-        pteError,
-        fluency: merged.scores.fluency,
-        grammar: merged.scores.grammar,
-        vocabulary: merged.scores.vocabulary,
-        coherence: merged.scores.coherence,
-        taskResponse: merged.scores.taskResponse ?? null,
-      });
+      dest.push(
+        makeRow(commonRow(sample, predicted, predictedPte, error, pteError), {
+          skillScores: ai.skillScores,
+          mergedScores: {
+            fluency: merged.scores.fluency,
+            grammar: merged.scores.grammar,
+            vocabulary: merged.scores.vocabulary,
+            coherence: merged.scores.coherence,
+            taskResponse: merged.scores.taskResponse ?? null,
+          },
+        })
+      );
       console.log(`${sample.name.padEnd(16)} expected ${sample.expectedIelts} → predicted ${predicted ?? "null"}  (err ${error ?? "?"})${sample.expectedPte != null ? `  PTE expected ${sample.expectedPte} → ${predictedPte ?? "null"} (err ${pteError ?? "?"})` : ""}`);
       console.log(`  measured: ${analysis.metrics.wpm} WPM, ${analysis.metrics.fillerWordCount} fillers, ${analysis.metrics.pauseFrequencyPerMinute} pauses/min  merged: ${JSON.stringify(merged.scores)}`);
     } catch (error) {
-      summary.speaking.push({ name: sample.name, expected: sample.expectedIelts, predicted: null, error: null, expectedPte: sample.expectedPte ?? null, predictedPte: null, pteError: null, fluency: 0, grammar: 0, vocabulary: 0, coherence: 0, taskResponse: null });
+      dest.push(
+        makeRow(commonRow(sample, null, null, null, null), {
+          skillScores: {},
+          mergedScores: { fluency: 0, grammar: 0, vocabulary: 0, coherence: 0, taskResponse: null },
+        })
+      );
       console.error(`${sample.name}: FAILED`, error instanceof Error ? error.message : error);
     }
   }
 }
+
+const speakingRow = (row: EvalRow, view: FeedbackView): EvalSummary["speaking"][number] => ({
+  ...row,
+  fluency: view.mergedScores?.fluency ?? 0,
+  grammar: view.mergedScores?.grammar ?? 0,
+  vocabulary: view.mergedScores?.vocabulary ?? 0,
+  coherence: view.mergedScores?.coherence ?? 0,
+  taskResponse: view.mergedScores?.taskResponse ?? null,
+});
 
 /**
  * Teacher-graded calibration: compares AI overall scores against real
@@ -131,11 +194,49 @@ async function main() {
   }
 
   const gradedOnly = process.argv.includes("--graded");
-  const summary: EvalSummary = { writing: [], speaking: [], graded: [], writingMae: null, speakingMae: null, gradedBandMae: null, ranAt: new Date().toISOString() };
+  const skipSynthetic = process.argv.includes("--golden-only");
+  const summary: EvalSummary = {
+    writing: [], speaking: [], syntheticWriting: [], syntheticSpeaking: [],
+    graded: [], writingMae: null, speakingMae: null, gradedBandMae: null,
+    syntheticWritingMae: null, syntheticSpeakingMae: null, ranAt: new Date().toISOString(),
+  };
   console.log("=== AI IELTS/PTE calibration evaluation ===\n");
 
   if (!gradedOnly) {
-    await runLabeledSamples(summary);
+    const goldenWritingRows: EvalSummary["writing"] = [];
+    const goldenSpeakingRows: EvalSummary["speaking"] = [];
+    const syntheticWritingRows: EvalSummary["syntheticWriting"] = [];
+    const syntheticSpeakingRows: EvalSummary["syntheticSpeaking"] = [];
+    await runLabeledSamples(
+      EVAL_WRITING.map((s) => ({ name: s.name, prompt: s.prompt, essay: s.essay, expectedIelts: s.expectedIelts, expectedPte: s.expectedPte ?? null })),
+      goldenWritingRows,
+      (row, view) => ({ ...row, skillScores: view.skillScores }),
+      "Golden"
+    );
+    await runLabeledSamples(
+      EVAL_SPEAKING.map((s) => ({ name: s.name, prompt: s.prompt, transcript: s.transcript, durationSec: s.durationSec, expectedIelts: s.expectedIelts, expectedPte: s.expectedPte ?? null })),
+      goldenSpeakingRows,
+      speakingRow,
+      "Golden"
+    );
+    if (!skipSynthetic) {
+      await runLabeledSamples(
+        SYNTHETIC_WRITING.map((s) => ({ name: s.name, prompt: s.prompt, essay: s.essay, expectedIelts: s.expectedIelts, expectedPte: s.expectedPte })),
+        syntheticWritingRows,
+        (row, view) => ({ ...row, skillScores: view.skillScores }),
+        "Synthetic"
+      );
+      await runLabeledSamples(
+        SYNTHETIC_SPEAKING.map((s) => ({ name: s.name, prompt: s.prompt, transcript: s.transcript, durationSec: s.durationSec, expectedIelts: s.expectedIelts, expectedPte: s.expectedPte })),
+        syntheticSpeakingRows,
+        speakingRow,
+        "Synthetic"
+      );
+    }
+    summary.writing.push(...goldenWritingRows);
+    summary.speaking.push(...goldenSpeakingRows);
+    summary.syntheticWriting.push(...syntheticWritingRows);
+    summary.syntheticSpeaking.push(...syntheticSpeakingRows);
   }
 
   if (gradedOnly || process.argv.includes("--with-graded")) {
@@ -157,15 +258,18 @@ async function main() {
     process.exit(0);
   }
 
-  const writingErrors = summary.writing.map((w) => w.error).filter((e): e is number => e !== null);
-  const speakingErrors = summary.speaking.map((s) => s.error).filter((e): e is number => e !== null);
-  const writingPteErrors = summary.writing.map((w) => w.pteError).filter((e): e is number => e !== null);
-  const speakingPteErrors = summary.speaking.map((s) => s.pteError).filter((e): e is number => e !== null);
-  summary.writingMae = writingErrors.length ? Math.round((writingErrors.reduce((a, b) => a + b, 0) / writingErrors.length) * 100) / 100 : null;
-  summary.speakingMae = speakingErrors.length ? Math.round((speakingErrors.reduce((a, b) => a + b, 0) / speakingErrors.length) * 100) / 100 : null;
-  summary.writingPteMae = writingPteErrors.length ? Math.round((writingPteErrors.reduce((a, b) => a + b, 0) / writingPteErrors.length) * 100) / 100 : null;
-  summary.speakingPteMae = speakingPteErrors.length ? Math.round((speakingPteErrors.reduce((a, b) => a + b, 0) / speakingPteErrors.length) * 100) / 100 : null;
+  summary.writingMae = maeOf(summary.writing.map((w) => w.error));
+  summary.speakingMae = maeOf(summary.speaking.map((s) => s.error));
+  summary.writingPteMae = maeOf(summary.writing.map((w) => w.pteError));
+  summary.speakingPteMae = maeOf(summary.speaking.map((s) => s.pteError));
+  summary.syntheticWritingMae = maeOf(summary.syntheticWriting.map((w) => w.error));
+  summary.syntheticSpeakingMae = maeOf(summary.syntheticSpeaking.map((s) => s.error));
+  summary.syntheticWritingPteMae = maeOf(summary.syntheticWriting.map((w) => w.pteError));
+  summary.syntheticSpeakingPteMae = maeOf(summary.syntheticSpeaking.map((s) => s.pteError));
   console.log(`\nMean absolute error — writing: ${summary.writingMae ?? "n/a"} band(s)  speaking: ${summary.speakingMae ?? "n/a"} band(s)  writing PTE: ${summary.writingPteMae ?? "n/a"}  speaking PTE: ${summary.speakingPteMae ?? "n/a"}`);
+  if (!skipSynthetic) {
+    console.log(`Synthetic MAE — writing: ${summary.syntheticWritingMae ?? "n/a"} band(s)  speaking: ${summary.syntheticSpeakingMae ?? "n/a"} band(s)  writing PTE: ${summary.syntheticWritingPteMae ?? "n/a"}  speaking PTE: ${summary.syntheticSpeakingPteMae ?? "n/a"} (${summary.syntheticWriting.length + summary.syntheticSpeaking.length} samples)`);
+  }
 
   const reportDir = path.resolve(process.cwd(), "eval-reports");
   fs.mkdirSync(reportDir, { recursive: true });
