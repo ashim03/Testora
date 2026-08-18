@@ -14,7 +14,8 @@
     "qa:audit": "tsx src/scripts/qaAudit.ts",
     "lint": "eslint src",
     "lint:fix": "eslint src --fix",
-    "test": "vitest run"
+    "test": "vitest run",
+    "eval:ai": "tsx src/scripts/evalAI.ts"
   },
   "dependencies": {
     "@testora-platform/shared": "file:../shared",
