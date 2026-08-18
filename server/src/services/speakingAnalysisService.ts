@@ -49,9 +49,17 @@ export interface SpeakingAnalysisResult {
   estimate: boolean;
 }
 
+export interface MeasuredPauses {
+  pauseCount: number;
+  totalSilenceSec: number;
+  speakingSec: number;
+  pauseFrequencyPerMinute: number;
+}
+
 export interface AnalysisInput {
   text: string;
   durationSec: number;
+  measured?: MeasuredPauses | null;
 }
 
 const clampScore = (value: number) => Math.max(0, Math.min(100, Math.round(value)));
@@ -102,24 +110,35 @@ export function countDiscourseMarkers(words: string[]): number {
 }
 
 export function analyzeTranscript(input: AnalysisInput): SpeakingAnalysisResult {
-  const { text, durationSec } = input;
+  const { text, durationSec, measured } = input;
   const words = tokenizeWords(text);
   const sentences = splitSentences(text);
   const wordCount = words.length;
   const sentenceCount = Math.max(sentences.length, 1);
   const minutes = Math.max(durationSec, 1) / 60;
 
-  const wpm = wordCount / minutes;
+  const usesMeasuredPauses = Boolean(measured && measured.speakingSec > 0 && measured.pauseCount >= 0);
+  const wpm = usesMeasuredPauses
+    ? wordCount / (Math.max((measured as MeasuredPauses).speakingSec, 1) / 60)
+    : wordCount / minutes;
 
   const { count: fillerWordCount, items: fillerWords } = countFillerWords(words);
   const { count: repetitionCount, phrases: repeatedPhrases } = detectRepeatedPhrases(words);
 
-  // Estimated pauses: the recording duration beyond what the spoken words
-  // plausibly take, divided by an average pause length.
-  const speakingEstimateSec = wordCount / WORDS_PER_SECOND;
-  const silentSec = Math.max(0, durationSec - speakingEstimateSec);
-  const pauseCount = Math.round(silentSec / PAUSE_ESTIMATE_SEC);
-  const pauseFrequencyPerMinute = durationSec > 0 ? (pauseCount / minutes) : 0;
+  let pauseCount: number;
+  let pauseFrequencyPerMinute: number;
+  if (usesMeasuredPauses) {
+    // Real pauses detected from the audio with silence detection.
+    pauseCount = (measured as MeasuredPauses).pauseCount;
+    pauseFrequencyPerMinute = (measured as MeasuredPauses).pauseFrequencyPerMinute;
+  } else {
+    // Estimated pauses: the recording duration beyond what the spoken words
+    // plausibly take, divided by an average pause length.
+    const speakingEstimateSec = wordCount / WORDS_PER_SECOND;
+    const silentSec = Math.max(0, durationSec - speakingEstimateSec);
+    pauseCount = Math.round(silentSec / PAUSE_ESTIMATE_SEC);
+    pauseFrequencyPerMinute = durationSec > 0 ? (pauseCount / minutes) : 0;
+  }
 
   const avgWordsPerSentence = wordCount / sentenceCount;
   const sentenceComplexity: "short" | "medium" | "complex" = avgWordsPerSentence < 8 ? "short" : avgWordsPerSentence > 16 ? "complex" : "medium";
@@ -177,7 +196,7 @@ export function analyzeTranscript(input: AnalysisInput): SpeakingAnalysisResult 
   const scores: SpeakingScores = { overall, fluency, grammar, vocabulary, coherence, taskResponse: null };
   const qualitative = buildQualitativeFeedback(metrics, { typeTokenRatio, longWordRatio });
 
-  return { metrics, scores, qualitative, estimate: true };
+  return { metrics, scores, qualitative, estimate: !usesMeasuredPauses };
 }
 
 /**
