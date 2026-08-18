@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import * as examService from "../services/examService";
 import * as gradingService from "../services/gradingService";
+import * as aiFeedbackService from "../services/aiFeedbackService";
 import * as assignmentService from "../services/assignmentService";
 import * as assignmentSchedulingService from "../services/assignmentSchedulingService";
 import { ApiError, asyncHandler } from "../utils/helpers";
@@ -16,6 +17,7 @@ export const assignExam = asyncHandler(async (req: Request, res: Response) => { 
 export const listSubmissions = asyncHandler(async (req: Request, res: Response) => { if (!req.user) throw new ApiError(401, "Authentication required"); const result = await examService.listTeacherSubmissions(req.user.id, queryOf(req)); res.json({ success: true, message: "Submissions", data: result.data, pagination: { page: result.page, limit: result.limit, total: result.total, pages: result.pages } }); });
 export const getSubmission = asyncHandler(async (req: Request, res: Response) => { if (!req.user) throw new ApiError(401, "Authentication required"); const data = await examService.getTeacherSubmission(String(req.params.id), req.user.id); res.json({ success: true, message: "Submission", data }); });
 export const gradeSubmission = asyncHandler(async (req: Request, res: Response) => { if (!req.user) throw new ApiError(401, "Authentication required"); const data = await gradingService.gradeAttemptManually(String(req.params.id), req.body, req.user, req.ip || null); res.json({ success: true, message: "Graded", data }); });
+export const aiCheckSubmission = asyncHandler(async (req: Request, res: Response) => { if (!req.user) throw new ApiError(401, "Authentication required"); const data = await aiFeedbackService.checkAttemptWithAITeacher(req.user.id, String(req.params.id)); res.json({ success: true, message: "AI feedback ready", data }); });
 export const publishResult = asyncHandler(async (req: Request, res: Response) => { if (!req.user) throw new ApiError(401, "Authentication required"); const data = await gradingService.publishResult(String(req.params.id), req.user, req.ip || null); res.json({ success: true, message: "Result published", data }); });
 export const reopenAttempt = asyncHandler(async (req: Request, res: Response) => { if (!req.user) throw new ApiError(401, "Authentication required"); const data = await gradingService.reopenAttempt(String(req.params.id), req.user); res.json({ success: true, message: "Attempt reopened", data }); });
 export const listResults = asyncHandler(async (req: Request, res: Response) => { if (!req.user) throw new ApiError(401, "Authentication required"); const data = await examService.listTeacherResults(req.user.id); res.json({ success: true, message: "Results", data }); });
