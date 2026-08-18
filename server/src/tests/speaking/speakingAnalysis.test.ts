@@ -110,9 +110,10 @@ describe("mergeSpeakingScores", () => {
     // Fluent in every dimension but the answer is irrelevant to the task.
     const result = mergeSpeakingScores(ANALYSIS, ai({ fluency: 95, grammar: 90, vocabulary: 90, coherence: 85, taskResponse: 20 }), true);
     expect(result.scores.taskResponse).toBe(20);
-    expect(result.scores.fluency).toBe(95);
-    // 20*0.25 + 95*0.25 + 90*0.2 + 90*0.2 + 85*0.1 = 5 + 23.75 + 18 + 18 + 8.5 = 73.25 → 73
-    expect(result.scores.overall).toBe(73);
+    // Fluency is measured from delivery metrics, not guessed by the AI from text.
+    expect(result.scores.fluency).toBe(ANALYSIS.scores.fluency);
+    // 20*0.25 + fluency*0.25 + 90*0.2 + 90*0.2 + 85*0.1
+    expect(result.scores.overall).toBe(Math.round(5 + ANALYSIS.scores.fluency * 0.25 + 18 + 18 + 8.5));
     expect(result.offTopic).toBe(true);
     expect(result.taskResponseNote).toMatch(/off topic/i);
   });
@@ -120,13 +121,14 @@ describe("mergeSpeakingScores", () => {
   it("does not flag borderline task responses", () => {
     const result = mergeSpeakingScores(ANALYSIS, ai({ fluency: 80, grammar: 80, vocabulary: 80, coherence: 80, taskResponse: 45 }), true);
     expect(result.offTopic).toBe(false);
-    // 45*0.25 + 80*0.25 + 80*0.2 + 80*0.2 + 80*0.1 = 71.25 → 71
-    expect(result.scores.overall).toBe(71);
+    // 45*0.25 + fluency*0.25 + 80*0.2 + 80*0.2 + 80*0.1
+    expect(result.scores.overall).toBe(Math.round(11.25 + ANALYSIS.scores.fluency * 0.25 + 16 + 16 + 8));
   });
 
   it("falls back to the AI overall score and notes missing prompts when task response is absent", () => {
     const result = mergeSpeakingScores(ANALYSIS, ai({ fluency: 80, grammar: 80, vocabulary: 80, coherence: 80 }, 72), false);
     expect(result.scores.taskResponse).toBeNull();
+    expect(result.scores.fluency).toBe(ANALYSIS.scores.fluency);
     expect(result.scores.overall).toBe(72);
     expect(result.offTopic).toBe(false);
     expect(result.taskResponseNote).toMatch(/no task prompt/i);
@@ -138,9 +140,9 @@ describe("mergeSpeakingScores", () => {
     expect(result.taskResponseNote).toBeNull();
   });
 
-  it("clamps AI skill scores to 0-100", () => {
+  it("clamps AI skill scores to 0-100 and keeps measured fluency in range", () => {
     const result = mergeSpeakingScores(ANALYSIS, ai({ fluency: 120, grammar: -10, vocabulary: 80, coherence: 80, taskResponse: 150 }), true);
-    expect(result.scores.fluency).toBe(100);
+    expect(result.scores.fluency).toBe(ANALYSIS.scores.fluency);
     expect(result.scores.grammar).toBe(0);
     expect(result.scores.taskResponse).toBe(100);
   });
