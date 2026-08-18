@@ -20,14 +20,14 @@ const base = (skillScores: Record<string, number>, bands: { ielts: number | null
 describe("applyWritingTaskResponse", () => {
   it("recomputes the overall score from the four writing criteria", () => {
     const feedback = base({ grammar: 80, vocabulary: 80, coherence: 80, taskResponse: 60 });
-    const { feedback: updated } = applyWritingTaskResponse(feedback, true);
+    const { feedback: updated } = applyWritingTaskResponse(feedback, "Task prompt: Write an essay about technology.");
     expect(updated.overallScore).toBe(75);
     expect(updated.overallScore).not.toBe(feedback.overallScore);
   });
 
   it("flags off-topic responses and caps the bands regardless of language quality", () => {
     const feedback = base({ grammar: 90, vocabulary: 90, coherence: 90, taskResponse: 25 }, { ielts: 8, pte: 80 });
-    const { offTopic, taskResponseNote, feedback: updated } = applyWritingTaskResponse(feedback, true);
+    const { offTopic, taskResponseNote, feedback: updated } = applyWritingTaskResponse(feedback, "Task prompt: Write an essay about technology.");
     expect(offTopic).toBe(true);
     expect(taskResponseNote).toMatch(/off topic/i);
     expect(updated.bands?.ielts).toBe(2.5); // 25/100 * 9 = 2.25 → nearest half band = 2.5
@@ -37,7 +37,7 @@ describe("applyWritingTaskResponse", () => {
 
   it("does not touch the response when no prompt is provided", () => {
     const feedback = base({ taskResponse: 10 }, { ielts: 8, pte: 80 });
-    const result = applyWritingTaskResponse(feedback, false);
+    const result = applyWritingTaskResponse(feedback, null);
     expect(result.offTopic).toBe(false);
     expect(result.taskResponseNote).toBeNull();
     expect(result.feedback).toEqual(feedback);
@@ -45,21 +45,33 @@ describe("applyWritingTaskResponse", () => {
 
   it("does not flag responses with an acceptable task response", () => {
     const feedback = base({ taskResponse: OFF_TOPIC_THRESHOLD + 10 }, { ielts: 8, pte: 80 });
-    const { offTopic, feedback: updated } = applyWritingTaskResponse(feedback, true);
+    const { offTopic, feedback: updated } = applyWritingTaskResponse(feedback, "Task prompt: Write an essay about technology.");
     expect(offTopic).toBe(false);
     expect(updated.bands?.ielts).toBe(8);
   });
 
   it("skips the recomputation when the model omitted task response", () => {
     const feedback = base({ grammar: 70, vocabulary: 70, coherence: 70 });
-    const { offTopic, feedback: updated } = applyWritingTaskResponse(feedback, true);
+    const { offTopic, feedback: updated } = applyWritingTaskResponse(feedback, "Task prompt: Write an essay about technology.");
     expect(offTopic).toBe(false);
     expect(updated.overallScore).toBe(80);
   });
 
   it("keeps the AI band when task response is strong", () => {
     const feedback = base({ grammar: 85, vocabulary: 80, coherence: 85, taskResponse: 82 }, { ielts: 8, pte: 79 });
-    const { feedback: updated } = applyWritingTaskResponse(feedback, true);
+    const { feedback: updated } = applyWritingTaskResponse(feedback, "Task prompt: Write an essay about technology.");
     expect(updated.bands).toEqual({ ielts: 8, pte: 79 });
+  });
+
+  it("caps PTE Summarize Written Text bands at IELTS 8 / PTE 80", () => {
+    const feedback = base({ grammar: 95, vocabulary: 95, coherence: 95, taskResponse: 95 }, { ielts: 9, pte: 90 });
+    const { feedback: updated } = applyWritingTaskResponse(feedback, "Summarize the passage in one sentence.");
+    expect(updated.bands).toEqual({ ielts: 8, pte: 80 });
+  });
+
+  it("keeps full bands for regular essays", () => {
+    const feedback = base({ grammar: 95, vocabulary: 95, coherence: 95, taskResponse: 95 }, { ielts: 9, pte: 90 });
+    const { feedback: updated } = applyWritingTaskResponse(feedback, "Task prompt: Write an essay about technology.");
+    expect(updated.bands).toEqual({ ielts: 9, pte: 90 });
   });
 });

@@ -17,6 +17,7 @@ router.post("/", validateRequest(createExamSchema as never), exams.createExam);
 router.get("/submissions", exams.listSubmissions);
 router.get("/submissions/:id", exams.getSubmission);
 router.post("/submissions/:id/grade", validateRequest(gradeSubmissionSchema as never), exams.gradeSubmission);
+router.post("/submissions/:id/ai-check", exams.aiCheckSubmission);
 router.post("/submissions/:id/publish", exams.publishResult);
 router.post("/submissions/:id/reopen", exams.reopenAttempt);
 router.get("/results", exams.listResults);

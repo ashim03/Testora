@@ -1,5 +1,5 @@
 ﻿import { Types } from "mongoose";
-import { Exam, ExamAssignment, ExamAttempt, ExamAnswer, Question, Batch, MediaAsset } from "../models";
+import { Exam, ExamAssignment, ExamAttempt, ExamAnswer, Question, Batch, MediaAsset, AIFeedback } from "../models";
 import { SECTIONAL_PARTS, SECTIONAL_CATEGORIES } from "@testora-platform/shared";
 import { ApiError, parseSort, generateReceipt } from "../utils/helpers";
 import { logActivity, audit, notify } from "./notificationService";
@@ -324,6 +324,35 @@ export async function getSectionalPracticeSummary(studentId: string): Promise<un
   return { sections };
 }
 
+/**
+ * Band history across all finished practice attempts, oldest first, for the
+ * trend chart on the practice page. Only attempts that produced a band or an
+ * estimated PTE score are included.
+ */
+export async function getBandTrend(studentId: string): Promise<unknown[]> {
+  const attempts = await ExamAttempt.find({
+    studentId,
+    status: { $in: FINISHED_STATES },
+    $or: [{ practiceBand: { $ne: null } }, { estimatedPteScore: { $ne: null } }],
+  })
+    .sort({ submittedAt: 1, createdAt: 1 })
+    .populate("examId", "title category")
+    .select("practiceBand estimatedPteScore finalScore maxScore submittedAt createdAt")
+    .lean();
+
+  return attempts.map((attempt) => {
+    const exam = (attempt as unknown as { examId: { title?: string; category?: string } | null }).examId;
+    return {
+      examTitle: exam?.title ?? "Practice",
+      category: exam?.category ?? null,
+      ieltsBand: attempt.practiceBand ?? null,
+      pteScore: attempt.estimatedPteScore ?? null,
+      scorePercent: attempt.maxScore ? Math.round(((attempt.finalScore ?? 0) / attempt.maxScore) * 100) : null,
+      submittedAt: attempt.submittedAt ?? attempt.createdAt,
+    };
+  });
+}
+
 export async function getStudentExam(examId: string, studentId: string): Promise<unknown> {
   const assignment = await ExamAssignment.findOne({ examId, studentId });
   if (!assignment) throw new ApiError(403, "This exam has not been assigned to you");
@@ -507,7 +536,8 @@ export async function getTeacherSubmission(attemptId: string, teacherId: string)
   if (String(exam.createdBy) !== teacherId) throw new ApiError(403, "Forbidden");
   const questions = await questionsForExam({ sections: exam.sections, questionIds: exam.questionIds });
   const answers = await ExamAnswer.find({ attemptId }).lean();
-  return { attempt, exam, questions, answers };
+  const aiFeedback = await AIFeedback.find({ attemptId }).select("questionId prompt submission overallScore skillScores bands annotations modelAnswer advice topActions offTopic taskResponseNote strengths improvements grammar vocabulary coherence fluency pronunciation nextSteps disclaimer providerModel createdAt").lean();
+  return { attempt, exam, questions, answers, aiFeedback };
 }
 
 export async function listTeacherResults(teacherId: string): Promise<unknown[]> {

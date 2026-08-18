@@ -16,6 +16,7 @@ router.get("/practice", student.listPracticeExams);
 router.get("/practice/adaptive", student.adaptivePractice);
 router.get("/practice/profile", student.learningProfile);
 router.get("/practice/summary", student.sectionalSummary);
+router.get("/practice/band-trend", student.bandTrend);
 router.get("/exams/:id", student.getExam);
 router.post("/exams/:id/start", student.startExam);
 router.get("/attempts/:id", student.getAttempt);

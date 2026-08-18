@@ -1,20 +1,18 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ChevronDown, TrendingUp } from "lucide-react";
-import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { ChevronDown } from "lucide-react";
 import { apiGet, apiPost } from "../../api/client";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { ErrorState, EmptyState, Spinner } from "../../components/ui/feedback";
 import { Button } from "../../components/ui/button";
 import { formatDateTime } from "../../utils";
 import { FeedbackDetail, type AIFeedback } from "../../components/ai/AIFeedbackDetail";
+import { BandTrendChart } from "../../components/ai/BandTrendChart";
 
 interface TeacherFeedback { _id: string; teacherId?: { firstName?: string; lastName?: string } | null; content?: string; marks?: number | null; createdAt: string; }
 
-interface BandPoint { label: string; ielts?: number | null; pte?: number | null; }
-
-function BandTrendChart({ rows }: { rows: AIFeedback[] }) {
-  const points: BandPoint[] = useMemo(() => {
+function BandTrendChartForFeedback({ rows }: { rows: AIFeedback[] }) {
+  const points = useMemo(() => {
     const withBands = rows.filter((r) => r.bands && (r.bands.ielts != null || r.bands.pte != null));
     return withBands.slice().reverse().map((r) => ({
       label: new Date(r.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric" }),
@@ -22,28 +20,7 @@ function BandTrendChart({ rows }: { rows: AIFeedback[] }) {
       pte: r.bands?.pte ?? null,
     }));
   }, [rows]);
-  if (points.length < 2) return null;
-  const hasIelts = points.some((p) => p.ielts != null);
-  const hasPte = points.some((p) => p.pte != null);
-  return (
-    <Card>
-      <CardHeader><CardTitle className="flex items-center gap-2 text-base"><TrendingUp className="size-4 text-primary" /> Band progress</CardTitle></CardHeader>
-      <CardContent>
-        <ResponsiveContainer width="100%" height={220}>
-          <LineChart data={points} margin={{ top: 5, right: 10, left: -15, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-            {hasIelts && <YAxis yAxisId="ielts" domain={[0, 9]} tick={{ fontSize: 11 }} />}
-            {hasPte && <YAxis yAxisId="pte" orientation="right" domain={[0, 90]} tick={{ fontSize: 11 }} />}
-            <Tooltip />
-            {hasIelts && <Line yAxisId="ielts" type="monotone" dataKey="ielts" name="IELTS band" stroke="#2563eb" strokeWidth={2} dot={{ r: 3 }} connectNulls />}
-            {hasPte && <Line yAxisId="pte" type="monotone" dataKey="pte" name="PTE estimate" stroke="#16a34a" strokeWidth={2} dot={{ r: 3 }} connectNulls />}
-          </LineChart>
-        </ResponsiveContainer>
-        <p className="mt-2 text-xs text-muted-foreground">Formative estimates only — not official IELTS or PTE Academic scores.</p>
-      </CardContent>
-    </Card>
-  );
+  return <BandTrendChart points={points} />;
 }
 
 function HistoryRow({ f, expanded, onToggle }: { f: AIFeedback; expanded: boolean; onToggle: () => void }) {
@@ -90,7 +67,7 @@ export function StudentFeedback() {
 
     {latest && <Card><CardHeader><CardTitle>Latest {latest.type === "WRITING" ? "Writing" : "Speaking"} feedback — {latest.overallScore}/100</CardTitle></CardHeader><CardContent><FeedbackDetail f={latest} /></CardContent></Card>}
 
-    <BandTrendChart rows={aiRows} />
+    <BandTrendChartForFeedback rows={aiRows} />
 
     <Card><CardHeader><CardTitle>AI feedback history</CardTitle></CardHeader><CardContent>{aiRows.length === 0 ? <EmptyState title="No AI feedback yet" description="Submit a writing or speaking response above to start your history." /> : <div className="space-y-3">{aiRows.map((f) => <HistoryRow key={f.id} f={f} expanded={expandedId === f.id} onToggle={() => setExpandedId(expandedId === f.id ? null : f.id)} />)}</div>}</CardContent></Card>
 

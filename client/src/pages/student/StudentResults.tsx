@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { Sparkles } from "lucide-react";
 import { apiGet } from "../../api/client";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
@@ -7,6 +8,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from ".
 import { Pagination, PanelEmptyState, TableSkeleton } from "../../components/ui/table-toolbar";
 import { ErrorState, Spinner } from "../../components/ui/feedback";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../components/ui/dialog";
+import { Button } from "../../components/ui/button";
+import { AICheckDialog } from "../../components/ai/AICheckDialog";
 import { formatDate, titleCase } from "../../utils";
 
 interface ResultRow {
@@ -38,9 +41,11 @@ function ResultDetailDialog({ resultId, open, onClose }: { resultId: string | nu
     queryFn: async () => (await apiGet<ResultDetail>(`/student/results/${resultId}`)).data,
     enabled: open && !!resultId,
   });
+  const [aiOpen, setAiOpen] = useState(false);
 
   const result = data?.result;
   const skills = Object.entries(result?.skillScores ?? {});
+  const attemptId = data?.attempt?._id ?? null;
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
@@ -94,9 +99,15 @@ function ResultDetailDialog({ resultId, open, onClose }: { resultId: string | nu
                 {data?.disclaimer === "PTE" ? "PTE" : "IELTS"}
               </Badge>
             </div>
+            {attemptId && (
+              <Button className="w-full" variant="outline" onClick={() => setAiOpen(true)}>
+                <Sparkles className="size-4 text-primary" /> Check with AI
+              </Button>
+            )}
             <p className="text-xs text-muted-foreground">Practice scores are indicative only and are not official IELTS or PTE results.</p>
           </div>
         )}
+        {attemptId && <AICheckDialog attemptId={attemptId} examTitle={result?.examTitle ?? "Result"} open={aiOpen} onClose={() => setAiOpen(false)} />}
       </DialogContent>
     </Dialog>
   );

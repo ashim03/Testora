@@ -8,6 +8,7 @@ import { getSpeechToTextProvider } from "./stt";
 import { type SpeechToTextProvider, SttUnavailableError } from "./stt/speechToTextProvider";
 import { validateSpeakingAudio, type AudioFormat } from "../utils/audioValidation";
 import { analyzeTranscript, mergeSpeakingScores, OFF_TOPIC_WEAKNESS, OFF_TOPIC_RECOMMENDATION, type SpeakingAnalysisResult } from "./speakingAnalysisService";
+import { analyzeAudioPauses } from "../utils/audioAnalysis";
 import { evaluateLanguage } from "./aiFeedbackService";
 import { ApiError } from "../utils/helpers";
 import type { ISpeakingAttempt, ISpeakingReport, ISpeakingScoreSet } from "../models/SpeakingAttempt";
@@ -191,10 +192,22 @@ export async function processSpeakingAttempt(attemptId: string): Promise<ISpeaki
     const transcriptShape = await transcribeWithRetry(stt, buffer, attempt);
     const transcript = transcriptShape.text;
 
+    // Real pause/silence measurement from the audio (falls back to the
+    // duration-based estimate when ffmpeg is unavailable or decoding fails).
+    const audioPauses = await analyzeAudioPauses(buffer, attempt.audio.format as AudioFormat, attempt.audio.durationSec);
+
     // 2. Local analysis (always computed; AI may refine later)
     const analysis: SpeakingAnalysisResult = analyzeTranscript({
       text: transcript,
       durationSec: attempt.audio.durationSec,
+      measured: audioPauses
+        ? {
+            pauseCount: audioPauses.pauseCount,
+            totalSilenceSec: audioPauses.totalSilenceSec,
+            speakingSec: audioPauses.speakingSec,
+            pauseFrequencyPerMinute: audioPauses.pauseFrequencyPerMinute,
+          }
+        : null,
     });
 
     // 3. AI refinement (optional; falls back cleanly to the heuristic estimate)

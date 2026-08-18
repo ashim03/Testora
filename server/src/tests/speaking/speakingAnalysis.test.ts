@@ -7,6 +7,7 @@ import {
   splitSentences,
   tokenizeWords,
 } from "../../services/speakingAnalysisService";
+import { parseSilenceOutput } from "../../utils/audioAnalysis";
 
 const SAMPLE = `I think staying healthy is important for everyone. Um, first of all I like to exercise in the morning because it gives me energy. Um, and I mean, when I exercise I feel better during the whole day. Actually, my favorite activity is running, and I usually run for about thirty minutes every day. For example, last week I ran five times and um I felt really productive. However, sometimes I struggle to keep the habit, you know, but I try my best every day. Overall, I believe small habits make a big difference in the long term.`;
 
@@ -93,6 +94,50 @@ describe("analyzeTranscript", () => {
     const clean = analyzeTranscript({ text: SAMPLE, durationSec: 60 });
     const dirty = analyzeTranscript({ text: SAMPLE + " um um um um um um um um um um um um um um um um", durationSec: 60 });
     expect(dirty.scores.fluency).toBeLessThan(clean.scores.fluency);
+  });
+});
+
+describe("analyzeTranscript with measured pauses", () => {
+  it("uses real pause counts and speaking time instead of estimates", () => {
+    const { metrics, scores, estimate } = analyzeTranscript({
+      text: SAMPLE,
+      durationSec: 60,
+      measured: { pauseCount: 3, totalSilenceSec: 12, speakingSec: 48, pauseFrequencyPerMinute: 3 },
+    });
+    expect(estimate).toBe(false);
+    expect(metrics.pauseCount).toBe(3);
+    expect(metrics.pauseFrequencyPerMinute).toBe(3);
+    expect(metrics.wpm).toBe(Math.round(metrics.words / (48 / 60)));
+    expect(scores.fluency).toBeGreaterThan(0);
+    expect(scores.fluency).toBeLessThanOrEqual(100);
+  });
+  it("falls back to duration-based estimates when measured pauses are missing", () => {
+    const { metrics, estimate } = analyzeTranscript({ text: SAMPLE, durationSec: 60, measured: null });
+    expect(estimate).toBe(true);
+    expect(metrics.pauseCount).toBeGreaterThan(0);
+    expect(metrics.wpm).toBe(metrics.words);
+  });
+});
+
+describe("parseSilenceOutput", () => {
+  it("parses ffmpeg silencedetect segments into pauses", () => {
+    const out = [
+      "[silencedetect @ 0x55] silence_start: 1.2",
+      "[silencedetect @ 0x55] silence_end: 2.4 | silence_duration: 1.2",
+      "[silencedetect @ 0x55] silence_start: 7.0",
+      "[silencedetect @ 0x55] silence_end: 8.5 | silence_duration: 1.5",
+    ].join("\n");
+    expect(parseSilenceOutput(out)).toEqual([
+      { start: 1.2, end: 2.4, duration: 1.2 },
+      { start: 7.0, end: 8.5, duration: 1.5 },
+    ]);
+  });
+  it("drops segments shorter than the minimum pause", () => {
+    const out = "[silencedetect @ 0x55] silence_start: 0.1\n[silencedetect @ 0x55] silence_end: 0.4 | silence_duration: 0.3";
+    expect(parseSilenceOutput(out)).toEqual([]);
+  });
+  it("returns an empty list for output without silences", () => {
+    expect(parseSilenceOutput("size=N/A time=00:00:12.34 bitrate=N/A")).toEqual([]);
   });
 });
 
