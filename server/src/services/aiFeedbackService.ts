@@ -49,15 +49,15 @@ async function updateLearningProfile(studentId: string, skillScores: Record<stri
   await profile.save();
 }
 
-export async function evaluateLanguage(type: FeedbackType, text: string, prompt?: string): Promise<AiFeedback> {
+export async function evaluateLanguage(type: FeedbackType, text: string, prompt?: string, measured?: { wpm: number; fillerWordCount: number; pauseFrequencyPerMinute: number; words: number } | null): Promise<AiFeedback> {
   if (!process.env.AI_API_KEY) throw new ApiError(503, "AI feedback is not configured");
   const normalized = text.trim();
   if (normalized.length < 20) throw new ApiError(400, "Response is too short for meaningful feedback");
   if (normalized.length > 12000) throw new ApiError(400, "Response exceeds the 12,000 character limit");
   const rubric = type === "WRITING"
-    ? "Evaluate as an IELTS/PTE Academic writing examiner using official band descriptors: Task Response/Achievement, Coherence & Cohesion, Lexical Resource, and Grammatical Range & Accuracy (IELTS bands 0-9); for PTE Academic use content, form, vocabulary, grammar, and spelling criteria (PTE 0-90). Calibrate every skillScore and the overall score (0-100) against the band scales, and set bands.ielts (0-9, half bands allowed like 6.5) and bands.pte (0-90) whenever confident, otherwise null."
-    : "Evaluate as an IELTS/PTE speaking examiner from the supplied transcript: IELTS Fluency & Coherence, Lexical Resource, Grammatical Range & Accuracy, and Pronunciation (do not claim to assess pronunciation from text alone); PTE Academic oral fluency, pronunciation, and content criteria. Calibrate every skillScore and the overall score (0-100) against the band scales, and set bands.ielts (0-9, half bands allowed like 6.5) and bands.pte (0-90) whenever confident, otherwise null. Score how fully the response addresses the task prompt and stays on topic into skillScores.taskResponse (0-100); set it to null if no task prompt is provided.";
-  const input = `You are an IELTS/PTE Academic examiner. ${rubric}\nReturn ONLY valid JSON with this exact shape: {"overallScore":0,"skillScores":{"grammar":0,"vocabulary":0,"coherence":0,"fluency":0,"taskResponse":0},"strengths":[],"improvements":[],"grammar":[],"vocabulary":[],"coherence":[],"fluency":[],"pronunciation":[],"nextSteps":[],"disclaimer":"","bands":{"ielts":null,"pte":null},"annotations":[{"start":0,"end":0,"original":"","correction":"","better":"","category":"","note":"","severity":"low"}],"modelAnswer":null,"advice":null}. skillScores values and overallScore must be 0-100. bands.ielts is 0-9, bands.pte is 0-90; set to null unless confident (formative estimate only, never an official score). annotations are inline corrections that cover EVERY noticeable mistake in the student response: grammar (articles, prepositions, tenses, subject-verb agreement, word order), vocabulary/word choice, spelling, punctuation, coherence/linking, and task response. start/end must be the exact character offsets of the mistake inside the student response so the substring from start to end equals original; original is the mistaken text, correction is the minimal fix, better is an optional stronger alternative, category is one of grammar/vocabulary/coherence/fluency/task_response/spelling/punctuation, note explains the rule or why the correction is better, severity (low/medium/high) reflects impact on the band. modelAnswer is an optional concise model response of at most 80 words written to the task prompt; advice is concise personalized study advice of at most 50 words. Keep each array to at most 4 concise items; annotations up to 12. Do not invent facts. This is formative feedback, not an official IELTS/PTE score.\n${prompt ? `Task prompt: ${prompt}\n` : ""}Student ${type.toLowerCase()} response:\n${normalized}`;
+    ? "Evaluate as an IELTS/PTE Academic writing examiner using official band descriptors: Task Response/Achievement, Coherence & Cohesion, Lexical Resource, and Grammatical Range & Accuracy (IELTS bands 0-9); for PTE Academic use content, form, vocabulary, grammar, and spelling criteria (PTE 0-90). Task Response must be scored against the task prompt: a response that ignores the prompt or wanders off topic must receive a low taskResponse (0-100) regardless of how fluent or accurate the language is. Calibrate every skillScore and the overall score (0-100) against the band scales, and set bands.ielts (0-9, half bands allowed like 6.5) and bands.pte (0-90) whenever confident, otherwise null."
+    : "Evaluate as an IELTS/PTE speaking examiner from the supplied transcript. Assess ONLY what the text can show: Lexical Resource, Grammatical Range & Accuracy, and Fluency & Coherence as far as it is visible in the transcript (cohesion, idea development, repetition, false starts, fillers). IELTS Pronunciation and PTE pronunciation/oral-fluency must be judged from the measured delivery metrics when provided — never guess pace, pauses, or pronunciation from text. PTE Academic content and oral criteria apply. Calibrate every skillScore and the overall score (0-100) against the band scales, and set bands.ielts (0-9, half bands allowed like 6.5) and bands.pte (0-90) whenever confident, otherwise null. Score how fully the response addresses the task prompt and stays on topic into skillScores.taskResponse (0-100); set it to null if no task prompt is provided.";
+  const input = `You are an IELTS/PTE Academic examiner. ${rubric}\nCalibration anchors for strict scoring:\n- Band 6.5: task is answered with some development, basic cohesion, mostly simple sentences, errors that do not impede meaning, limited topic vocabulary.\n- Band 7.5: task fully addressed, clear structure with linking devices, mix of simple and complex structures, good collocations, only rare minor errors.\n- Band 8.5: ideas developed fully and naturally, sophisticated cohesion, wide precise vocabulary with natural collocations, wide grammatical range with only occasional slips.\nScore against the descriptors, not the elegance of the prose: a competent but simple answer is Band 6-6.5, never Band 7.5+. Each skillScore must be consistent with the band you assign for that criterion. Return ONLY valid JSON with this exact shape: {"overallScore":0,"skillScores":{"grammar":0,"vocabulary":0,"coherence":0,"fluency":0,"taskResponse":0},"strengths":[],"improvements":[],"grammar":[],"vocabulary":[],"coherence":[],"fluency":[],"pronunciation":[],"nextSteps":[],"disclaimer":"","bands":{"ielts":null,"pte":null},"annotations":[{"start":0,"end":0,"original":"","correction":"","better":"","category":"","note":"","severity":"low"}],"modelAnswer":null,"advice":null}. skillScores values and overallScore must be 0-100. bands.ielts is 0-9, bands.pte is 0-90; set to null unless confident (formative estimate only, never an official score). annotations are inline corrections that cover EVERY noticeable mistake in the student response: grammar (articles, prepositions, tenses, subject-verb agreement, word order), vocabulary/word choice, spelling, punctuation, coherence/linking, and task response. start/end must be the exact character offsets of the mistake inside the student response so the substring from start to end equals original; original is the mistaken text, correction is the minimal fix, better is an optional stronger alternative, category is one of grammar/vocabulary/coherence/fluency/task_response/spelling/punctuation, note explains the rule or why the correction is better, severity (low/medium/high) reflects impact on the band. modelAnswer is an optional concise model response of at most 80 words written to the task prompt; advice is concise personalized study advice of at most 50 words. Keep each array to at most 4 concise items; annotations up to 12. Do not invent facts. This is formative feedback, not an official IELTS/PTE score.\n${prompt ? `Task prompt: ${prompt}\n` : ""}${measured ? `Measured delivery metrics (from the recording, ground truth for pace/pause judgments): ${measured.words} words at ${measured.wpm} WPM, ${measured.fillerWordCount} filler words, ${measured.pauseFrequencyPerMinute} estimated pauses per minute.\n` : ""}Student ${type.toLowerCase()} response:\n${normalized}`;
   let response: Response;
   try {
     response = await fetch(API_URL, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${process.env.AI_API_KEY}` }, body: JSON.stringify(DISABLE_THINKING ? { model: MODEL, input, enable_thinking: false } : { model: MODEL, input }), signal: AbortSignal.timeout(120000) });
@@ -72,11 +72,77 @@ export async function evaluateLanguage(type: FeedbackType, text: string, prompt?
   const feedback = parseJson(output, normalized.length); feedback.disclaimer ||= "AI-generated formative feedback; not an official IELTS/PTE score."; return feedback;
 }
 
-export async function createAIFeedback(studentId: string, type: FeedbackType, text: string, prompt?: string, context?: { attemptId?: string | null; examId?: string | null; questionId?: string | null }): Promise<AiFeedback & { id: string; createdAt: Date }> {
-  const feedback = await evaluateLanguage(type, text, prompt);
-  const saved = await AIFeedback.create({ studentId, type, prompt: prompt || null, submission: text.trim(), ...feedback, providerModel: MODEL, attemptId: context?.attemptId || null, examId: context?.examId || null, questionId: context?.questionId || null });
+const WRITING_ACTION_TEMPLATES: Record<string, string> = {
+  taskResponse: "Strengthen task response: fully address every part of the prompt and keep your position clear.",
+  coherence: "Improve coherence: link paragraphs and ideas with varied cohesive devices.",
+  vocabulary: "Expand lexical range: use less common, topic-specific vocabulary.",
+  grammar: "Sharpen grammar: review the inline corrections and practice the patterns you missed.",
+  fluency: "Develop ideas more fully: build each point before moving to the next.",
+};
+
+function deriveTopActions(skillScores: Record<string, number>): string[] {
+  const ranked = (Object.keys(WRITING_ACTION_TEMPLATES) as Array<keyof typeof WRITING_ACTION_TEMPLATES>)
+    .filter((skill) => typeof skillScores[skill] === "number")
+    .sort((a, b) => skillScores[a] - skillScores[b])
+    .slice(0, 3);
+  return ranked.map((skill) => WRITING_ACTION_TEMPLATES[skill]);
+}
+
+export const OFF_TOPIC_THRESHOLD = 40;
+
+/**
+ * Enforces topic adherence for writing deterministically: the overall score
+ * is recomputed from the four IELTS writing criteria (task response weighted
+ * equally with coherence, vocabulary, and grammar), and an off-topic response
+ * gets its bands capped so it cannot earn a high score purely on language
+ * quality. Mirrors the speaking behaviour in mergeSpeakingScores.
+ */
+export function applyWritingTaskResponse(feedback: AiFeedback, hasPrompt: boolean): { feedback: AiFeedback; offTopic: boolean; taskResponseNote: string | null } {
+  const taskResponse = typeof feedback.skillScores.taskResponse === "number" ? clamp(feedback.skillScores.taskResponse) : null;
+  if (!hasPrompt || taskResponse === null) {
+    return { feedback, offTopic: false, taskResponseNote: null };
+  }
+  const weights: Array<[string, number]> = [["taskResponse", 0.25], ["coherence", 0.25], ["vocabulary", 0.25], ["grammar", 0.25]];
+  let weighted = 0;
+  let weightSum = 0;
+  for (const [key, weight] of weights) {
+    const value = feedback.skillScores[key];
+    if (typeof value === "number" && Number.isFinite(value)) {
+      weighted += clamp(value) * weight;
+      weightSum += weight;
+    }
+  }
+  const overallScore = weightSum > 0 ? clamp(weighted / weightSum) : feedback.overallScore;
+  const offTopic = taskResponse < OFF_TOPIC_THRESHOLD;
+  let bands = feedback.bands;
+  if (offTopic && bands) {
+    bands = {
+      ielts: bands.ielts !== null ? Math.min(bands.ielts, Math.max(1, Math.round((taskResponse / 100) * 9 * 2) / 2)) : null,
+      pte: bands.pte !== null ? Math.min(bands.pte, Math.max(10, Math.round(taskResponse * 0.9))) : null,
+    };
+  }
+  return {
+    feedback: { ...feedback, overallScore, bands },
+    offTopic,
+    taskResponseNote: offTopic ? "Your response appears to have gone off topic, which lowered your overall score." : null,
+  };
+}
+
+export async function createAIFeedback(studentId: string, type: FeedbackType, text: string, prompt?: string, context?: { attemptId?: string | null; examId?: string | null; questionId?: string | null }): Promise<AiFeedback & { id: string; createdAt: Date; topActions?: string[]; offTopic?: boolean; taskResponseNote?: string | null }> {
+  const hasPrompt = Boolean(prompt?.trim());
+  let feedback = await evaluateLanguage(type, text, prompt);
+  let offTopic = false;
+  let taskResponseNote: string | null = null;
+  if (type === "WRITING") {
+    const result = applyWritingTaskResponse(feedback, hasPrompt);
+    feedback = result.feedback;
+    offTopic = result.offTopic;
+    taskResponseNote = result.taskResponseNote;
+  }
+  const topActions = type === "WRITING" ? deriveTopActions(feedback.skillScores) : [];
+  const saved = await AIFeedback.create({ studentId, type, prompt: prompt || null, submission: text.trim(), ...feedback, topActions, offTopic, taskResponseNote, providerModel: MODEL, attemptId: context?.attemptId || null, examId: context?.examId || null, questionId: context?.questionId || null });
   await updateLearningProfile(studentId, feedback.skillScores);
-  return { ...feedback, id: String(saved._id), createdAt: saved.createdAt };
+  return { ...feedback, topActions, offTopic, taskResponseNote, id: String(saved._id), createdAt: saved.createdAt };
 }
 
 export interface AttemptQuestionFeedback {
@@ -119,7 +185,7 @@ export async function checkAttemptWithAI(studentId: string, attemptId: string): 
   const qByTitle = new Map(questions.map((q) => [String(q._id), q]));
 
   const existing = qids.length
-    ? await AIFeedback.find({ attemptId, questionId: { $in: qids } }).select("questionId prompt submission overallScore skillScores bands annotations modelAnswer advice strengths improvements grammar vocabulary coherence fluency pronunciation nextSteps disclaimer providerModel createdAt").lean()
+    ? await AIFeedback.find({ attemptId, questionId: { $in: qids } }).select("questionId prompt submission overallScore skillScores bands annotations modelAnswer advice topActions offTopic taskResponseNote strengths improvements grammar vocabulary coherence fluency pronunciation nextSteps disclaimer providerModel createdAt").lean()
     : [];
   const existingByQ = new Map(existing.map((doc) => [String(doc.questionId), doc]));
 
@@ -159,6 +225,6 @@ export async function checkAttemptWithAI(studentId: string, attemptId: string): 
 }
 
 export async function listAIFeedback(studentId: string, limit = 20) {
-  const docs = await AIFeedback.find({ studentId }).sort({ createdAt: -1 }).limit(Math.min(Math.max(limit, 1), 50)).select("type prompt submission overallScore skillScores bands annotations modelAnswer advice strengths improvements grammar vocabulary coherence fluency pronunciation nextSteps disclaimer providerModel createdAt").lean();
+  const docs = await AIFeedback.find({ studentId }).sort({ createdAt: -1 }).limit(Math.min(Math.max(limit, 1), 50)).select("type prompt submission overallScore skillScores bands annotations modelAnswer advice topActions offTopic taskResponseNote strengths improvements grammar vocabulary coherence fluency pronunciation nextSteps disclaimer providerModel createdAt").lean();
   return docs.map((doc) => ({ ...doc, id: String(doc._id) }));
 }

@@ -25,6 +25,9 @@ export interface IAIFeedback extends Document {
   annotations: AiErrorAnnotation[];
   modelAnswer?: string | null;
   advice?: string | null;
+  topActions?: string[];
+  offTopic?: boolean;
+  taskResponseNote?: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -53,6 +56,9 @@ const schema = new mongoose.Schema<IAIFeedback>({
   annotations: { type: [{ start: Number, end: Number, original: String, correction: String, better: String, category: String, note: String, severity: String }], default: [] },
   modelAnswer: { type: String, default: null },
   advice: { type: String, default: null },
+  topActions: { type: [String], default: [] },
+  offTopic: { type: Boolean, default: false },
+  taskResponseNote: { type: String, default: null },
 }, { timestamps: true });
 
 schema.index({ studentId: 1, createdAt: -1 });
