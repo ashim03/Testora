@@ -10,6 +10,9 @@ export interface AIFeedback {
   annotations?: AiErrorAnnotation[];
   modelAnswer?: string | null;
   advice?: string | null;
+  topActions?: string[];
+  offTopic?: boolean;
+  taskResponseNote?: string | null;
   strengths: string[];
   improvements: string[];
   grammar: string[];
@@ -73,6 +76,20 @@ export function Corrections({ items }: { items?: AiErrorAnnotation[] }) {
 export function FeedbackDetail({ f }: { f: AIFeedback }) {
   return (
     <div className="space-y-4">
+      {f.offTopic && (
+        <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3">
+          <h4 className="text-sm font-semibold text-destructive">Off topic</h4>
+          <p className="mt-1 text-sm text-muted-foreground">{f.taskResponseNote ?? "Your response appears to have gone off topic, which lowered your overall score."}</p>
+        </div>
+      )}
+      {f.topActions?.length ? (
+        <div className="rounded-md border border-primary/20 bg-primary/5 p-3">
+          <h4 className="text-sm font-semibold text-primary">Top {f.topActions.length} actions to raise your band</h4>
+          <ol className="mt-2 list-decimal space-y-1 pl-5 text-sm text-muted-foreground">
+            {f.topActions.map((action, i) => <li key={`action-${i}`}>{action}</li>)}
+          </ol>
+        </div>
+      ) : null}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Bands bands={f.bands} />
         <span className="font-semibold">{f.overallScore}/100</span>
