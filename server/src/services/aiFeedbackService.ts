@@ -5,7 +5,27 @@ import { ApiError } from "../utils/helpers";
 
 export type FeedbackType = AIFeedbackType;
 export type AiFeedback = AiAnalysisResult;
+export type WritingRubricVariant = "TASK2_ESSAY" | "GT_LETTER" | "ACADEMIC_TASK1" | "PTE_SUMMARIZE" | "GENERAL";
 const ANNOTATION_SEVERITIES = new Set(["low", "medium", "high"]);
+
+/**
+ * Detects the writing task type from the prompt so each task is scored with
+ * its own official criteria instead of one generic essay rubric.
+ */
+export function writingRubricVariant(prompt: string | null | undefined): WritingRubricVariant {
+  const text = (prompt || "").toLowerCase();
+  if (/summaris|summarize/.test(text) && /one sentence|single sentence/.test(text)) return "PTE_SUMMARIZE";
+  if (/letter|general training task 1|gt task 1/.test(text)) return "GT_LETTER";
+  if (/task 1|chart|graph|table|map|process|diagram/.test(text)) return "ACADEMIC_TASK1";
+  return "TASK2_ESSAY";
+}
+
+const WRITING_RUBRICS: Record<Exclude<WritingRubricVariant, "GENERAL">, string> = {
+  TASK2_ESSAY: "Evaluate as an IELTS/PTE Academic writing examiner using official band descriptors: Task Response, Coherence & Cohesion, Lexical Resource, and Grammatical Range & Accuracy (IELTS bands 0-9); for PTE Academic use content, form, vocabulary, grammar, and spelling criteria (PTE 0-90). Task Response must be scored against the task prompt: a response that ignores the prompt or wanders off topic must receive a low taskResponse (0-100) regardless of how fluent or accurate the language is.",
+  GT_LETTER: "Evaluate as an IELTS General Training Task 1 letter examiner using official band descriptors: Task Achievement (purpose of the letter, appropriate tone — formal or informal as required, correct letter format, and coverage of ALL bullet points in the task), Coherence & Cohesion, Lexical Resource, and Grammatical Range & Accuracy (IELTS bands 0-9). A letter that ignores the required bullet points or uses the wrong tone must receive a low taskResponse (0-100).",
+  ACADEMIC_TASK1: "Evaluate as an IELTS Academic Task 1 writing examiner using official band descriptors: Task Achievement (a clear overview, key features or trends reported accurately, no personal opinion, approximately 150 words), Coherence & Cohesion, Lexical Resource, and Grammatical Range & Accuracy (IELTS bands 0-9). A response that describes the wrong data, gives an opinion, or omits an overview must receive a low taskResponse (0-100).",
+  PTE_SUMMARIZE: "Evaluate as a PTE Academic Summarize Written Text examiner: content (ALL key points of the passage captured, no invented ideas), form (exactly ONE sentence of 5-75 words), vocabulary, and grammar (PTE 0-90). PTE content uses partial credit: a summary that misses a key point must not score more than 65 content, and one that misses the main idea or invents ideas must not score more than 45. Do not award near-perfect scores (85+) to a single 25-word sentence; reserve the top of the scale for a comprehensive, accurate, well-structured single-sentence summary that captures every key point. A summary that omits key points, invents ideas, or spans multiple sentences must receive a low taskResponse (0-100).",
+};
 
 const MODEL = process.env.AI_MODEL || "qwen-plus";
 const BASE_URL = (process.env.AI_BASE_URL || "https://api.openai.com/v1").replace(/\/$/, "");
@@ -54,9 +74,10 @@ export async function evaluateLanguage(type: FeedbackType, text: string, prompt?
   const normalized = text.trim();
   if (normalized.length < 20) throw new ApiError(400, "Response is too short for meaningful feedback");
   if (normalized.length > 12000) throw new ApiError(400, "Response exceeds the 12,000 character limit");
+  const variant = type === "WRITING" ? writingRubricVariant(prompt) : "GENERAL";
   const rubric = type === "WRITING"
-    ? "Evaluate as an IELTS/PTE Academic writing examiner using official band descriptors: Task Response/Achievement, Coherence & Cohesion, Lexical Resource, and Grammatical Range & Accuracy (IELTS bands 0-9); for PTE Academic use content, form, vocabulary, grammar, and spelling criteria (PTE 0-90). Task Response must be scored against the task prompt: a response that ignores the prompt or wanders off topic must receive a low taskResponse (0-100) regardless of how fluent or accurate the language is. Calibrate every skillScore and the overall score (0-100) against the band scales, and set bands.ielts (0-9, half bands allowed like 6.5) and bands.pte (0-90) whenever confident, otherwise null."
-    : "Evaluate as an IELTS/PTE speaking examiner from the supplied transcript. Assess ONLY what the text can show: Lexical Resource, Grammatical Range & Accuracy, and Fluency & Coherence as far as it is visible in the transcript (cohesion, idea development, repetition, false starts, fillers). IELTS Pronunciation and PTE pronunciation/oral-fluency must be judged from the measured delivery metrics when provided — never guess pace, pauses, or pronunciation from text. PTE Academic content and oral criteria apply. Calibrate every skillScore and the overall score (0-100) against the band scales, and set bands.ielts (0-9, half bands allowed like 6.5) and bands.pte (0-90) whenever confident, otherwise null. Score how fully the response addresses the task prompt and stays on topic into skillScores.taskResponse (0-100); set it to null if no task prompt is provided.";
+    ? `${WRITING_RUBRICS[variant === "GENERAL" ? "TASK2_ESSAY" : variant]} Calibrate every skillScore and the overall score (0-100) against the band scales, and set bands.ielts (0-9, half bands allowed like 6.5) and bands.pte (0-90) whenever confident, otherwise null.`
+    : "Evaluate as an IELTS/PTE speaking examiner from the supplied transcript. Assess ONLY what the text can show: Lexical Resource, Grammatical Range & Accuracy, and Fluency & Coherence as far as it is visible in the transcript (cohesion, idea development, repetition, false starts, fillers). IELTS Pronunciation and PTE pronunciation/oral-fluency must be judged from the measured delivery metrics when provided — never guess pace, pauses, or pronunciation from text. PTE Academic content and oral criteria apply. For short structured tasks (describing a graph or image, retelling a lecture, answering a single question), apply a realistic ceiling: a 30-45 second response, however accurate, should rarely exceed IELTS 7.5 / PTE 75, because band descriptors reserve 8+ for sustained, flexible use of language over a longer response. Calibrate every skillScore and the overall score (0-100) against the band scales, and set bands.ielts (0-9, half bands allowed like 6.5) and bands.pte (0-90) whenever confident, otherwise null. Score how fully the response addresses the task prompt and stays on topic into skillScores.taskResponse (0-100); set it to null if no task prompt is provided.";
   const input = `You are an IELTS/PTE Academic examiner. ${rubric}\nCalibration anchors for strict scoring:\n- Band 6.5: task is answered with some development, basic cohesion, mostly simple sentences, errors that do not impede meaning, limited topic vocabulary.\n- Band 7.5: task fully addressed, clear structure with linking devices, mix of simple and complex structures, good collocations, only rare minor errors.\n- Band 8.5: ideas developed fully and naturally, sophisticated cohesion, wide precise vocabulary with natural collocations, wide grammatical range with only occasional slips.\nScore against the descriptors, not the elegance of the prose: a competent but simple answer is Band 6-6.5, never Band 7.5+. Each skillScore must be consistent with the band you assign for that criterion. Return ONLY valid JSON with this exact shape: {"overallScore":0,"skillScores":{"grammar":0,"vocabulary":0,"coherence":0,"fluency":0,"taskResponse":0},"strengths":[],"improvements":[],"grammar":[],"vocabulary":[],"coherence":[],"fluency":[],"pronunciation":[],"nextSteps":[],"disclaimer":"","bands":{"ielts":null,"pte":null},"annotations":[{"start":0,"end":0,"original":"","correction":"","better":"","category":"","note":"","severity":"low"}],"modelAnswer":null,"advice":null}. skillScores values and overallScore must be 0-100. bands.ielts is 0-9, bands.pte is 0-90; set to null unless confident (formative estimate only, never an official score). annotations are inline corrections that cover EVERY noticeable mistake in the student response: grammar (articles, prepositions, tenses, subject-verb agreement, word order), vocabulary/word choice, spelling, punctuation, coherence/linking, and task response. start/end must be the exact character offsets of the mistake inside the student response so the substring from start to end equals original; original is the mistaken text, correction is the minimal fix, better is an optional stronger alternative, category is one of grammar/vocabulary/coherence/fluency/task_response/spelling/punctuation, note explains the rule or why the correction is better, severity (low/medium/high) reflects impact on the band. modelAnswer is an optional concise model response of at most 80 words written to the task prompt; advice is concise personalized study advice of at most 50 words. Keep each array to at most 4 concise items; annotations up to 12. Do not invent facts. This is formative feedback, not an official IELTS/PTE score.\n${prompt ? `Task prompt: ${prompt}\n` : ""}${measured ? `Measured delivery metrics (from the recording, ground truth for pace/pause judgments): ${measured.words} words at ${measured.wpm} WPM, ${measured.fillerWordCount} filler words, ${measured.pauseFrequencyPerMinute} estimated pauses per minute.\n` : ""}Student ${type.toLowerCase()} response:\n${normalized}`;
   let response: Response;
   try {
@@ -97,7 +118,9 @@ export const OFF_TOPIC_THRESHOLD = 40;
  * gets its bands capped so it cannot earn a high score purely on language
  * quality. Mirrors the speaking behaviour in mergeSpeakingScores.
  */
-export function applyWritingTaskResponse(feedback: AiFeedback, hasPrompt: boolean): { feedback: AiFeedback; offTopic: boolean; taskResponseNote: string | null } {
+export function applyWritingTaskResponse(feedback: AiFeedback, prompt: string | null | undefined, variant?: WritingRubricVariant): { feedback: AiFeedback; offTopic: boolean; taskResponseNote: string | null } {
+  const hasPrompt = Boolean(prompt?.trim());
+  const resolvedVariant = variant ?? writingRubricVariant(prompt);
   const taskResponse = typeof feedback.skillScores.taskResponse === "number" ? clamp(feedback.skillScores.taskResponse) : null;
   if (!hasPrompt || taskResponse === null) {
     return { feedback, offTopic: false, taskResponseNote: null };
@@ -115,11 +138,24 @@ export function applyWritingTaskResponse(feedback: AiFeedback, hasPrompt: boolea
   const overallScore = weightSum > 0 ? clamp(weighted / weightSum) : feedback.overallScore;
   const offTopic = taskResponse < OFF_TOPIC_THRESHOLD;
   let bands = feedback.bands;
-  if (offTopic && bands) {
-    bands = {
-      ielts: bands.ielts !== null ? Math.min(bands.ielts, Math.max(1, Math.round((taskResponse / 100) * 9 * 2) / 2)) : null,
-      pte: bands.pte !== null ? Math.min(bands.pte, Math.max(10, Math.round(taskResponse * 0.9))) : null,
-    };
+  if (bands) {
+    let cappedIelts = bands.ielts;
+    let cappedPte = bands.pte;
+    // Off-topic responses are capped by their task response band.
+    if (offTopic) {
+      cappedIelts = cappedIelts !== null ? Math.min(cappedIelts, Math.max(1, Math.round((taskResponse / 100) * 9 * 2) / 2)) : null;
+      cappedPte = cappedPte !== null ? Math.min(cappedPte, Math.max(10, Math.round(taskResponse * 0.9))) : null;
+    }
+    // PTE Summarize Written Text responses have a hard ceiling: even a
+    // flawless single sentence is a limited task, so bands never exceed
+    // IELTS 8 / PTE 80.
+    if (resolvedVariant === "PTE_SUMMARIZE") {
+      cappedIelts = cappedIelts !== null ? Math.min(cappedIelts, 8) : null;
+      cappedPte = cappedPte !== null ? Math.min(cappedPte, 80) : null;
+    }
+    if (cappedIelts !== bands.ielts || cappedPte !== bands.pte) {
+      bands = { ielts: cappedIelts, pte: cappedPte };
+    }
   }
   return {
     feedback: { ...feedback, overallScore, bands },
@@ -134,7 +170,7 @@ export async function createAIFeedback(studentId: string, type: FeedbackType, te
   let offTopic = false;
   let taskResponseNote: string | null = null;
   if (type === "WRITING") {
-    const result = applyWritingTaskResponse(feedback, hasPrompt);
+    const result = applyWritingTaskResponse(feedback, prompt);
     feedback = result.feedback;
     offTopic = result.offTopic;
     taskResponseNote = result.taskResponseNote;
@@ -172,6 +208,25 @@ function feedbackShape(doc: Record<string, unknown>): AiFeedback & { id: string;
 export async function checkAttemptWithAI(studentId: string, attemptId: string): Promise<AttemptAICheckResult> {
   const attempt = await ExamAttempt.findOne({ _id: attemptId, studentId });
   if (!attempt) throw new ApiError(404, "Attempt not found");
+  return runAttemptAICheck(attempt, studentId);
+}
+
+/**
+ * Teacher-scoped variant of checkAttemptWithAI: allows a teacher to run (or
+ * reuse) AI feedback for a submitted attempt on an exam they created, e.g.
+ * while grading. Feedback is still attributed to the student.
+ */
+export async function checkAttemptWithAITeacher(teacherId: string, attemptId: string): Promise<AttemptAICheckResult> {
+  const attempt = await ExamAttempt.findById(attemptId);
+  if (!attempt) throw new ApiError(404, "Attempt not found");
+  const exam = await Exam.findById(attempt.examId).select("createdBy").lean();
+  if (!exam) throw new ApiError(404, "Exam not found");
+  if (String(exam.createdBy) !== teacherId) throw new ApiError(403, "You can only review attempts on exams you created");
+  return runAttemptAICheck(attempt, String(attempt.studentId));
+}
+
+async function runAttemptAICheck(attempt: InstanceType<typeof ExamAttempt>, studentId: string): Promise<AttemptAICheckResult> {
+  const attemptId = String(attempt._id);
   if (!["SUBMITTED", "UNDER_REVIEW", "GRADED", "PUBLISHED"].includes(attempt.status)) {
     throw new ApiError(400, "Submit the attempt before requesting AI feedback");
   }
@@ -221,7 +276,7 @@ export async function checkAttemptWithAI(studentId: string, attemptId: string): 
 
   if (work.length > 0 && work.every((w) => w.error)) throw new ApiError(502, "AI feedback service is temporarily unavailable. Please try again in a moment.");
 
-  return { attemptId: String(attempt._id), examId: String(attempt.examId), examTitle: exam.title, questions: work };
+  return { attemptId, examId: String(attempt.examId), examTitle: exam.title, questions: work };
 }
 
 export async function listAIFeedback(studentId: string, limit = 20) {

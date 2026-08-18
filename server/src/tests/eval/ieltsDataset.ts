@@ -3,6 +3,7 @@ export interface EvalWritingSample {
   prompt: string;
   essay: string;
   expectedIelts: number;
+  expectedPte?: number;
 }
 
 export interface EvalSpeakingSample {
@@ -11,6 +12,7 @@ export interface EvalSpeakingSample {
   transcript: string;
   durationSec: number;
   expectedIelts: number;
+  expectedPte?: number;
 }
 
 export const EVAL_WRITING: EvalWritingSample[] = [
@@ -43,8 +45,15 @@ In conclusion, both early and late schooling have advantages and disadvantages. 
   {
     name: "offtopic-ignores-prompt",
     prompt: "Some people believe that university education should be free for everyone. To what extent do you agree or disagree?",
-    expectedIelts: 4.5,
+    expectedIelts: 1,
     essay: `Global warming is one of the most serious problems facing the world today. The temperature of the earth is rising because of carbon emissions from cars and factories. This causes ice to melt at the poles, and sea levels are rising, which threatens coastal cities. Governments must invest in renewable energy such as solar and wind power to reduce emissions. Individuals can also help by using public transport, saving electricity, and planting trees. If we do not act now, the consequences will be devastating for future generations.`,
+  },
+  {
+    name: "pte-summarize-text",
+    prompt: "Summarize the passage in one sentence. Write about 20 to 30 words.",
+    expectedIelts: 7,
+    expectedPte: 70,
+    essay: `Mangrove forests protect tropical coastlines from storms and erosion while providing a vital nursery habitat for fish and birds, and their conservation is therefore essential for both coastal communities and biodiversity.`,
   },
 ];
 
@@ -63,12 +72,32 @@ export const EVAL_SPEAKING: EvalSpeakingSample[] = [
     durationSec: 58,
     transcript: `Um, last year I, uh, I helped my friend with, um, moving to a new apartment. And, uh, it was, like, really hard because, um, the apartment was on the fifth floor, and, uh, there was no elevator. So, um, we carry... we carried the boxes, like, one by one, and, uh, it took, um, almost the whole day. I felt, um, tired but, uh, happy because, like, he said thank you. Yeah, that's, um, what happened.`,
   },
+  {
+    name: "pte-retell-lecture",
+    prompt: "You will hear a short lecture. After the lecture finishes, retell what the lecturer talked about in your own words.",
+    expectedIelts: 7,
+    expectedPte: 68,
+    durationSec: 45,
+    transcript: `The lecture was about the history of the postal service. The lecturer explained that sending messages used to be extremely slow and unreliable, and that the invention of the postage stamp in the nineteenth century made post affordable for ordinary people. He also mentioned how the railway network allowed letters to be delivered across large distances within days instead of weeks, and how the telephone eventually reduced the role of letters in everyday communication. Overall, the lecture focused on how transportation and technology changed the way people exchange information.`,
+  },
+  {
+    name: "pte-describe-image",
+    prompt: "Look at the graph and describe the main trends. You will have 40 seconds to prepare and 40 seconds to respond.",
+    expectedIelts: 6.5,
+    expectedPte: 63,
+    durationSec: 40,
+    transcript: `The line graph shows the number of tourists visiting three countries between 2000 and 2020. In general, tourism increased in all three countries over the period. France started at around fifty million visitors and rose steadily to nearly ninety million in 2020. Spain also grew, but more slowly, from thirty million to about fifty million. Italy had the smallest numbers, starting at twenty million and finishing at roughly thirty-five million, with a small dip in 2010. To summarise, France attracted the most visitors throughout, while Italy grew the least.`,
+  },
 ];
 
 export interface EvalSummary {
-  writing: Array<{ name: string; expected: number; predicted: number | null; error: number | null; skillScores: Record<string, number> }>;
-  speaking: Array<{ name: string; expected: number; predicted: number | null; error: number | null; fluency: number; grammar: number; vocabulary: number; coherence: number; taskResponse: number | null }>;
+  writing: Array<{ name: string; expected: number; predicted: number | null; error: number | null; expectedPte: number | null; predictedPte: number | null; pteError: number | null; skillScores: Record<string, number> }>;
+  speaking: Array<{ name: string; expected: number; predicted: number | null; error: number | null; expectedPte: number | null; predictedPte: number | null; pteError: number | null; fluency: number; grammar: number; vocabulary: number; coherence: number; taskResponse: number | null }>;
+  graded: Array<{ attemptId: string; teacherPercent: number; aiOverall: number; bandError: number | null; ielts: number | null; pte: number | null }>;
   writingMae: number | null;
   speakingMae: number | null;
+  writingPteMae?: number | null;
+  speakingPteMae?: number | null;
+  gradedBandMae: number | null;
   ranAt: string;
 }
