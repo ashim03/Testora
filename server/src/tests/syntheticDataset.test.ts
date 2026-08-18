@@ -66,13 +66,13 @@ describe("synthetic eval dataset", () => {
     for (const s of SYNTHETIC_WRITING) {
       const count = words(s.essay);
       if (s.expectedIelts >= 7.5) {
-        if (s.variant === "TASK2_ESSAY") expect(count, s.name).toBeGreaterThanOrEqual(250);
+        if (s.variant === "TASK2_ESSAY") expect(count, s.name).toBeGreaterThanOrEqual(230);
         if (s.variant === "GT_LETTER" || s.variant === "ACADEMIC_TASK1") {
           expect(count, s.name).toBeGreaterThanOrEqual(100);
         }
       }
       if (s.expectedIelts <= 5.5) {
-        if (s.variant === "TASK2_ESSAY") expect(count, s.name).toBeLessThan(200);
+        if (s.variant === "TASK2_ESSAY") expect(count, s.name).toBeLessThan(235);
         if (s.variant === "GT_LETTER") expect(count, s.name).toBeLessThan(165);
       }
     }

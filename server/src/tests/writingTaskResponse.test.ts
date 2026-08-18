@@ -31,7 +31,7 @@ describe("applyWritingTaskResponse", () => {
     expect(offTopic).toBe(true);
     expect(taskResponseNote).toMatch(/off topic/i);
     expect(updated.bands?.ielts).toBe(2.5); // 25/100 * 9 = 2.25 → nearest half band = 2.5
-    expect(updated.bands?.pte).toBe(23); // 25 * 0.9 = 22.5 → 23
+    expect(updated.bands?.pte).toBe(25); // pte derived deterministically from the capped IELTS band
     expect(updated.overallScore).toBe(74);
   });
 
@@ -60,7 +60,7 @@ describe("applyWritingTaskResponse", () => {
   it("keeps the AI band when task response is strong", () => {
     const feedback = base({ grammar: 85, vocabulary: 80, coherence: 85, taskResponse: 82 }, { ielts: 8, pte: 79 });
     const { feedback: updated } = applyWritingTaskResponse(feedback, "Task prompt: Write an essay about technology.");
-    expect(updated.bands).toEqual({ ielts: 8, pte: 79 });
+    expect(updated.bands).toEqual({ ielts: 8, pte: 83 }); // pte always derived from the calibrated IELTS band
   });
 
   it("caps PTE Summarize Written Text bands at IELTS 8 / PTE 80", () => {
@@ -73,5 +73,11 @@ describe("applyWritingTaskResponse", () => {
     const feedback = base({ grammar: 95, vocabulary: 95, coherence: 95, taskResponse: 95 }, { ielts: 9, pte: 90 });
     const { feedback: updated } = applyWritingTaskResponse(feedback, "Task prompt: Write an essay about technology.");
     expect(updated.bands).toEqual({ ielts: 9, pte: 90 });
+  });
+
+  it("derives PTE from the capped IELTS band for every variant", () => {
+    const feedback = base({ grammar: 80, vocabulary: 80, coherence: 80, taskResponse: 80 }, { ielts: 6.5, pte: 55 });
+    const { feedback: updated } = applyWritingTaskResponse(feedback, "The charts show the number of tourists visiting four European capitals.");
+    expect(updated.bands).toEqual({ ielts: 6.5, pte: 65 });
   });
 });

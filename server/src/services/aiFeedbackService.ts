@@ -2,6 +2,7 @@ import { AIFeedback, ExamAnswer, ExamAttempt, Exam, LearningProfile, Question } 
 import type { ISkillMastery } from "../models/LearningProfile";
 import type { AiAnalysisResult, AiErrorAnnotation, AIFeedbackType } from "@testora-platform/shared";
 import { ApiError } from "../utils/helpers";
+import { pteFromIelts } from "../utils/bandScales";
 
 export type FeedbackType = AIFeedbackType;
 export type AiFeedback = AiAnalysisResult;
@@ -157,6 +158,13 @@ export function applyWritingTaskResponse(feedback: AiFeedback, prompt: string | 
     if (resolvedVariant === "PTE_SUMMARIZE") {
       cappedIelts = cappedIelts !== null ? Math.min(cappedIelts, 8) : null;
       cappedPte = cappedPte !== null ? Math.min(cappedPte, 80) : null;
+    }
+    // PTE is derived deterministically from the (capped) IELTS band: raw
+    // model PTE estimates drift 10-25 points, and one monotone mapping keeps
+    // the PTE surface consistent with the calibrated IELTS score.
+    if (cappedIelts !== null) {
+      cappedPte = pteFromIelts(cappedIelts);
+      if (resolvedVariant === "PTE_SUMMARIZE") cappedPte = Math.min(cappedPte, 80);
     }
     if (cappedIelts !== bands.ielts || cappedPte !== bands.pte) {
       bands = { ielts: cappedIelts, pte: cappedPte };

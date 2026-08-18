@@ -10,9 +10,10 @@
  */
 import fs from "fs";
 import path from "path";
-import { SYNTHETIC_SPEAKING, SYNTHETIC_WRITING, pteFromIelts, type SyntheticSpeakingSample, type SyntheticWritingSample } from "../tests/eval/syntheticDataset";
+import { SYNTHETIC_SPEAKING, SYNTHETIC_WRITING, type SyntheticSpeakingSample, type SyntheticWritingSample } from "../tests/eval/syntheticDataset";
 import { buildScoringInput, type WritingRubricVariant } from "../services/aiFeedbackService";
 import { analyzeTranscript } from "../services/speakingAnalysisService";
+import { pteFromIelts } from "../utils/bandScales";
 
 const clamp = (v: number) => Math.max(0, Math.min(100, Math.round(v)));
 

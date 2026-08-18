@@ -11,6 +11,8 @@
  * primary gate; this synthetic set scales calibration coverage to 200+.
  */
 
+import { pteFromIelts as bandScalesPteFromIelts } from "../../utils/bandScales";
+
 export type WritingVariant = "TASK2_ESSAY" | "GT_LETTER" | "ACADEMIC_TASK1" | "PTE_SUMMARIZE";
 
 export interface SyntheticWritingSample {
@@ -55,7 +57,7 @@ function makeRng(seed: number) {
 
 type Tier = "high" | "mid" | "low";
 const tierOf = (band: number): Tier => (band >= 7.5 ? "high" : band >= 6 ? "mid" : "low");
-export const pteFromIelts = (band: number): number => ({ 5: 46, 5.5: 51, 6: 58, 6.5: 65, 7: 72, 7.5: 78, 8: 83, 8.5: 87 } as Record<number, number>)[band] ?? 60;
+const pteFromIelts = bandScalesPteFromIelts;
 
 // ---------------------------------------------------------------------------
 // Writing: Task 2 essays
@@ -121,11 +123,11 @@ const TASK2_TOPICS: Task2Topic[] = [
   },
   {
     subject: "international tourism",
-    claim: "tourism damages local communities more than it helps them",
-    counter: "tourism provides essential income and preserves cultural heritage",
-    example: "historic cities now restrict visitor numbers because crowds damage old buildings",
-    reason: "tourism revenue often flows to foreign companies rather than local families",
-    position: "disagree to a large extent",
+    claim: "international tourism brings more benefits than drawbacks to local communities",
+    counter: "tourism damages local communities more than it helps them",
+    example: "tourism revenue funds the upkeep of historic buildings and sustains local guesthouses and craft workshops",
+    reason: "visitor spending creates year-round jobs for families that would otherwise depend on unstable seasonal work",
+    position: "agree",
   },
   {
     subject: "reducing meat consumption",
@@ -152,16 +154,16 @@ const ESSAY_BODY_CLAIM: Record<Tier, (t: Task2Topic) => string> = {
   mid: (t) =>
     `First of all, ${t.claim}. For example, ${t.example}. In addition, ${t.reason}, so this has a real impact on people's daily lives. Besides, these changes are visible in almost every household, which makes the trend hard to ignore.`,
   low: (t) =>
-    `The first reason is that ${t.claim}. For example, ${t.example}. Also, ${t.reason}, so it is very important for the life of people. This is why I think this way.`,
+    `The first reason is that ${t.claim}. For example, ${t.example}. Also, ${t.reason}, so it is very important for the life of people. Many people see this with their own eyes every day, and it is hard to deny this situation. In my country, the situation is the same, and many people agree with me.`,
 };
 
 const ESSAY_BODY_COUNTER: Record<Tier, (t: Task2Topic) => string> = {
   high: (t) =>
     `Nevertheless, opponents contend that ${t.counter}. There is some merit in this concern, as this objection reflects a genuine phenomenon in many everyday contexts. However, such drawbacks are typically outweighed by the practical advantages described above, and they can be addressed through sensible policy rather than wholesale rejection. What is more, many of these concerns can be mitigated through thoughtful regulation and public awareness campaigns.`,
   mid: (t) =>
-    `On the other hand, some people say that ${t.counter}. This can be true in some situations, for instance when ${t.example}. However, I believe the advantages are bigger than the disadvantages. Still, most people manage to enjoy the benefits while keeping the risks under control.`,
+    `On the other hand, some people say that ${t.counter}. This can be true in some situations, and both sides have some support in everyday experience. However, I believe the advantages are bigger than the disadvantages. Still, the trend has more supporters than opponents, and it is likely to continue.`,
   low: (t) =>
-    `But other people think that ${t.counter}. Maybe they are right sometimes. But I still believe that ${t.claim}, and I am not change my mind.`,
+    `But other people think that ${t.counter}. Maybe they are right sometimes, but I still believe that ${t.claim}. The good things are more important than the bad things, and I am not change my mind about this.`,
 };
 
 const ESSAY_CONCLUSION: Record<Tier, (t: Task2Topic) => string> = {
@@ -170,7 +172,7 @@ const ESSAY_CONCLUSION: Record<Tier, (t: Task2Topic) => string> = {
   mid: (t) =>
     `To conclude, I believe that ${t.claim}. The positives outweigh the negatives, and governments and individuals should support the trend with sensible policies. In the end, sensible policies and individual choices together will decide how the trend develops.`,
   low: (t) =>
-    `In conclusion, I think ${t.claim}. It is good for peoples and it should continue in future.`,
+    `In conclusion, I think ${t.claim}. Many countries are already moving in this direction, and I hope the trend continues in the future. It is important for the life of people in many places around the world.`,
 };
 
 const GRAMMAR_ERRORS = [
@@ -216,14 +218,55 @@ function injectErrors(text: string, count: number, rng: () => number): string {
   return result;
 }
 
+const HIGH_INTRO_FRAMES = [
+  (t: Task2Topic) => `It is widely acknowledged that ${t.subject} is reshaping everyday life, and opinion is divided over whether ${t.claim}. In this essay, I will argue that I broadly agree with this view, while acknowledging the strongest objections.`,
+  (t: Task2Topic) => `Few topics generate as much debate as ${t.subject}, and the question of whether ${t.claim} divides both experts and the public. This essay will set out why I largely share this position.`,
+  (t: Task2Topic) => `There is growing discussion about ${t.subject}, with some commentators claiming that ${t.claim}. After weighing both sides, I have come down in favour of this view, and the reasons are set out below.`,
+  (t: Task2Topic) => `In recent years, ${t.subject} has moved to the centre of public debate, and the claim that ${t.claim} deserves careful examination. On balance, I agree with this position, for the reasons that follow.`,
+];
+
+const HIGH_CLAIM_OPENERS = [
+  "The principal argument in favour of this position is that",
+  "The most compelling reason for supporting this view is that",
+  "A strong case for this position rests on the fact that",
+  "The decisive consideration in its favour is that",
+];
+
+const HIGH_CLAIM_TAILS = [
+  "which has made daily routines markedly more efficient",
+  "a point that is borne out by everyday experience",
+  "and the cumulative effect on quality of life should not be underestimated",
+  "an outcome that is visible in virtually every community",
+];
+
+const HIGH_COUNTER_OPENERS = [
+  "Nevertheless, opponents contend that",
+  "That said, critics point out that",
+  "Opponents of this view argue that",
+  "It must be conceded, however, that",
+];
+
+const HIGH_CONCLUSION_OPENERS = [
+  "In conclusion, although the objections are not without foundation",
+  "To sum up, the evidence strongly suggests that",
+  "All things considered, the case for this position remains persuasive, and",
+];
+
 function buildTask2Essay(rng: ReturnType<typeof makeRng>, band: number, topic: Task2Topic): string {
   const tier = tierOf(band);
-  const essay = [
-    ESSAY_INTRO[tier](topic),
-    ESSAY_BODY_CLAIM[tier](topic),
-    ESSAY_BODY_COUNTER[tier](topic),
-    ESSAY_CONCLUSION[tier](topic),
-  ].join("\n");
+  const essay = tier === "high"
+    ? [
+        rng.pick(HIGH_INTRO_FRAMES)(topic),
+        `${rng.pick(HIGH_CLAIM_OPENERS)} ${topic.claim}. For instance, ${topic.example}, ${rng.pick(HIGH_CLAIM_TAILS)}. Moreover, ${topic.reason}. It is worth emphasising that these gains are not confined to wealthy countries, since similar patterns have been observed in developing economies as well.`,
+        `${rng.pick(HIGH_COUNTER_OPENERS)} ${topic.counter}. There is some merit in this concern, as this objection reflects a genuine phenomenon in many everyday contexts. However, such drawbacks are typically outweighed by the practical advantages described above, and they can be addressed through sensible policy rather than wholesale rejection. What is more, many of these concerns can be mitigated through thoughtful regulation and public awareness campaigns.`,
+        `${rng.pick(HIGH_CONCLUSION_OPENERS)} ${topic.claim}. The benefits, when weighed carefully, clearly justify the continuation of this trend, provided it is guided by sensible regulation. The trajectory is likely to continue, but its direction will depend on how thoughtfully society chooses to manage it.`,
+      ].join("\n")
+    : [
+        ESSAY_INTRO[tier](topic),
+        ESSAY_BODY_CLAIM[tier](topic),
+        ESSAY_BODY_COUNTER[tier](topic),
+        ESSAY_CONCLUSION[tier](topic),
+      ].join("\n");
   const errorCount = tier === "low" ? rng.int(3, 5) : tier === "mid" ? rng.chance(0.5) ? 1 : 0 : 0;
   return errorCount > 0 ? injectErrors(essay, errorCount, rng.rng) : essay;
 }
