@@ -182,9 +182,12 @@ export function analyzeTranscript(input: AnalysisInput): SpeakingAnalysisResult 
 
 /**
  * Combines the heuristic analysis with optional AI scores and derives the
- * final score set. Topic adherence (taskResponse) is only assessed when the
- * AI evaluated a response against a task prompt; it is weighted highest so a
- * fluent but irrelevant answer cannot earn a high overall score.
+ * final score set. Fluency is always taken from the measured delivery
+ * metrics (WPM, fillers, pauses, repetition) because the AI only sees the
+ * transcript text and cannot judge pace or pauses reliably. The AI scores
+ * grammar, vocabulary, coherence, and topic adherence (taskResponse), which
+ * are the criteria a transcript actually shows. Topic adherence is weighted
+ * highest so a fluent but irrelevant answer cannot earn a high overall score.
  */
 export function mergeSpeakingScores(
   analysis: SpeakingAnalysisResult,
@@ -194,13 +197,14 @@ export function mergeSpeakingScores(
   if (!ai) {
     return { scores: { ...analysis.scores, taskResponse: null }, offTopic: false, taskResponseNote: null };
   }
-  const pick = (key: "fluency" | "grammar" | "vocabulary" | "coherence") => {
+  const pick = (key: "grammar" | "vocabulary" | "coherence") => {
     const value = ai.skillScores[key];
     return typeof value === "number" && Number.isFinite(value) ? clampScore(value) : analysis.scores[key];
   };
   const rawTaskResponse = ai.skillScores.taskResponse;
   const taskResponse = typeof rawTaskResponse === "number" && Number.isFinite(rawTaskResponse) ? clampScore(rawTaskResponse) : null;
-  const base = { fluency: pick("fluency"), grammar: pick("grammar"), vocabulary: pick("vocabulary"), coherence: pick("coherence") };
+  const fluency = analysis.scores.fluency;
+  const base = { fluency, grammar: pick("grammar"), vocabulary: pick("vocabulary"), coherence: pick("coherence") };
   const offTopic = taskResponse !== null && taskResponse < TASK_RESPONSE_THRESHOLD;
   let overall: number;
   let taskResponseNote: string | null = null;

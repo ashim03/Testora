@@ -207,9 +207,13 @@ export async function processSpeakingAttempt(attemptId: string): Promise<ISpeaki
         aiFeedback = await evaluateLanguage(
           "SPEAKING",
           transcript.slice(0, 12000),
-          attempt.prompt
-            ? `${attempt.prompt}\nDelivery snapshot: ${analysis.metrics.words} words, ${analysis.metrics.wpm} WPM, ${analysis.metrics.fillerWordCount} filler words, ${analysis.metrics.pauseCount} estimated pauses.`
-            : undefined,
+          attempt.prompt || undefined,
+          {
+            words: analysis.metrics.words,
+            wpm: analysis.metrics.wpm,
+            fillerWordCount: analysis.metrics.fillerWordCount,
+            pauseFrequencyPerMinute: analysis.metrics.pauseFrequencyPerMinute,
+          },
         );
         estimate = false;
         providerModel = AI_MODEL;
