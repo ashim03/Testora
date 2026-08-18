@@ -2,15 +2,15 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
-import { Play, RotateCcw, Clock, Layers, CheckCircle2, BookOpen, GraduationCap, X, Brain, Target, TrendingUp, Sparkles, RefreshCw } from "lucide-react";
+import { Play, RotateCcw, Clock, Layers, CheckCircle2, BookOpen, GraduationCap, X, Brain, Target, TrendingUp, Sparkles } from "lucide-react";
 import { apiGet, apiPost } from "../../api/client";
 import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { TableToolbar, Pagination, TableSkeleton } from "../../components/ui/table-toolbar";
-import { ErrorState, EmptyState, Spinner } from "../../components/ui/feedback";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../components/ui/dialog";
-import { FeedbackDetail, type AIFeedback } from "../../components/ai/AIFeedbackDetail";
+import { ErrorState, EmptyState } from "../../components/ui/feedback";
+import { AICheckDialog } from "../../components/ai/AICheckDialog";
+import { BandTrendChart, type BandPoint } from "../../components/ai/BandTrendChart";
 import { getErrorMessage, formatDuration, titleCase } from "../../utils";
 import { QUESTION_CATEGORIES, SECTIONAL_PARTS } from "@testora-platform/shared";
 
@@ -24,8 +24,7 @@ interface PracticeItem { exam: { _id: string; title: string; category: string; t
 interface LearningProfileData { skills: Array<{ skill: string; score: number; attempts: number; trend: number; lastPracticedAt?: string | null }>; totalPracticeSessions: number; currentStreak: number; lastPracticeAt?: string | null; }
 interface AdaptivePlan { skill: string; mastery: number; difficulty: string; reason: string; }
 interface AdaptiveData { plan: AdaptivePlan[]; weakAreas: Array<{ category: string; averageScore: number; difficulty: string; source: string }>; }
-interface AICheckQuestion { questionId: string; questionTitle: string; prompt: string | null; answer: string; feedback: AIFeedback | null; error: string | null; reused: boolean; }
-interface AICheckResult { attemptId: string; examId: string; examTitle: string; questions: AICheckQuestion[]; }
+interface BandTrendPoint { examTitle: string; category: string | null; ieltsBand: number | null; pteScore: number | null; scorePercent: number | null; submittedAt: string; }
 
 const CATEGORIES = QUESTION_CATEGORIES as string[];
 const attemptVariant = (status?: string): "secondary" | "outline" | "success" | "default" | "warning" => {
@@ -34,56 +33,6 @@ const attemptVariant = (status?: string): "secondary" | "outline" | "success" | 
   if (status === "SUBMITTED" || status === "UNDER_REVIEW") return "secondary";
   return "outline";
 };
-
-function PracticeAICheckDialog({ attemptId, examTitle, open, onClose }: { attemptId: string; examTitle: string; open: boolean; onClose: () => void }) {
-  const { data, isFetching, error, refetch, isError } = useQuery({
-    queryKey: ["student", "attempt-ai-check", attemptId],
-    queryFn: async () => (await apiPost<AICheckResult>(`/student/attempts/${attemptId}/ai-check`)).data,
-    enabled: open && !!attemptId,
-  });
-
-  return (
-    <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader><DialogTitle className="flex items-center gap-2 pr-6"><Sparkles className="size-4 text-primary" /> AI check: {examTitle}</DialogTitle></DialogHeader>
-        <div className="max-h-[75vh] space-y-4 overflow-y-auto pr-1">
-          {isFetching && !data ? (
-            <div className="flex flex-col items-center gap-3 py-10 text-center">
-              <Spinner className="size-8 text-primary" />
-              <p className="text-sm text-muted-foreground">Analyzing your answers with an IELTS/PTE examiner model… this can take up to a minute.</p>
-            </div>
-          ) : isError ? (
-            <div className="flex flex-col items-center gap-3 py-8 text-center">
-              <p className="text-sm text-destructive">{error instanceof Error ? error.message : "AI check failed. Please try again."}</p>
-              <Button size="sm" variant="outline" onClick={() => refetch()} disabled={isFetching}><RefreshCw className="size-4" /> Retry</Button>
-            </div>
-          ) : data ? (
-            data.questions.length === 0 ? (
-              <EmptyState icon={Brain} title="Nothing to check" description="This attempt has no essay or writing answers that can be checked by AI." />
-            ) : (
-              data.questions.map((q, i) => (
-                <div key={q.questionId} className="rounded-lg border">
-                  <div className="border-b p-3">
-                    <p className="font-medium">Question {i + 1} · {q.questionTitle}</p>
-                    {q.prompt && <details className="mt-1 text-xs text-muted-foreground"><summary className="cursor-pointer">Task prompt</summary><p className="mt-1 whitespace-pre-line">{q.prompt}</p></details>}
-                    {q.reused && q.feedback && <p className="mt-1 text-xs text-muted-foreground">Previously generated · {q.feedback.createdAt ? new Date(q.feedback.createdAt).toLocaleString() : ""}</p>}
-                  </div>
-                  <div className="p-4">
-                    {q.feedback ? <FeedbackDetail f={q.feedback} /> : q.error ? (
-                      <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{q.error}</div>
-                    ) : (
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground"><Spinner className="size-4 text-primary" /> Waiting for AI…</div>
-                    )}
-                  </div>
-                </div>
-              ))
-            )
-          ) : null}
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
 
 export function StudentPractice() {
   const navigate = useNavigate();
@@ -106,6 +55,12 @@ export function StudentPractice() {
   const { data, isLoading, isError, error } = useQuery({ queryKey: ["student", "practice", params], queryFn: async () => { const res = await apiGet<PracticeItem[]>("/student/practice", params); return { data: res.data ?? [], pagination: res.pagination }; } });
   const { data: profileData } = useQuery({ queryKey: ["student", "learning-profile"], queryFn: async () => (await apiGet<LearningProfileData>("/student/practice/profile")).data });
   const { data: adaptiveData, isLoading: adaptiveLoading } = useQuery({ queryKey: ["student", "adaptive-practice", category], queryFn: async () => (await apiGet<AdaptiveData>("/student/practice/adaptive", { limit: 6, category: category || undefined })).data });
+  const { data: bandTrend } = useQuery({ queryKey: ["student", "band-trend"], queryFn: async () => (await apiGet<BandTrendPoint[]>("/student/practice/band-trend")).data ?? [] });
+  const bandPoints: BandPoint[] = useMemo(() => (bandTrend ?? []).map((p) => ({
+    label: new Date(p.submittedAt).toLocaleDateString(undefined, { month: "short", day: "numeric" }),
+    ielts: p.ieltsBand,
+    pte: p.pteScore,
+  })), [bandTrend]);
 
   const startMutation = useMutation({ mutationFn: async (examId: string) => { const res = await apiPost<{ attempt: { _id: string }; exam?: unknown }>(`/student/exams/${examId}/start`); return res.data?.attempt; }, onSuccess: (attempt) => { if (attempt) navigate(`/student/exam/${attempt._id}`); }, onError: (err) => toast.error(getErrorMessage(err)) });
   const items = data?.data ?? [];
@@ -142,6 +97,8 @@ export function StudentPractice() {
         </CardContent>
       </Card>
 
+      <BandTrendChart points={bandPoints} />
+
       {(sectionLabel || partLabel) && <div className="flex flex-wrap items-center gap-2 text-sm">{sectionLabel && <Badge variant="secondary">{sectionLabel}</Badge>}{partLabel && <Badge variant="outline" className="gap-1">{partLabel}<button aria-label="Clear part filter" onClick={clearPart}><X className="size-3" /></button></Badge>}</div>}
 
       <TableToolbar searchPlaceholder="Search practice tests..." search={search} onSearchChange={(v) => { setSearch(v); setPage(1); }}>
@@ -159,7 +116,7 @@ export function StudentPractice() {
         </div>
       )}
       {pagination && pagination.pages > 1 && <Pagination page={pagination.page} pages={pagination.pages} onPageChange={setPage} />}
-      <PracticeAICheckDialog attemptId={aiCheck?.attemptId ?? ""} examTitle={aiCheck?.examTitle ?? ""} open={!!aiCheck} onClose={() => setAiCheck(null)} />
+      <AICheckDialog attemptId={aiCheck?.attemptId ?? ""} examTitle={aiCheck?.examTitle ?? ""} open={!!aiCheck} onClose={() => setAiCheck(null)} />
     </div>
   );
 }

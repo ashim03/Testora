@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Inbox, PenLine, ShieldCheck, RotateCcw, Paperclip, ClipboardPen, Star } from "lucide-react";
+import { Inbox, PenLine, ShieldCheck, RotateCcw, Paperclip, ClipboardPen, Star, Sparkles, AlertTriangle } from "lucide-react";
 import { apiGet, apiPost } from "../../api/client";
 import { assignmentsApi } from "../../api/courses";
 import { Button } from "../../components/ui/button";
@@ -30,6 +30,19 @@ interface ExamSubmissionRow {
   updatedAt: string;
 }
 
+interface TeacherAiFeedback {
+  _id: string;
+  questionId?: string | null;
+  type: string;
+  overallScore: number;
+  skillScores?: Record<string, number | null>;
+  bands?: { ielts?: number | null; pte?: number | null } | null;
+  topActions?: string[];
+  offTopic?: boolean;
+  taskResponseNote?: string | null;
+  createdAt?: string;
+}
+
 interface ExamGradeData {
   attempt: {
     _id: string;
@@ -52,6 +65,7 @@ interface ExamGradeData {
     marks?: number;
   }>;
   answers: Array<{ questionId: string; answer: unknown; answered: boolean; autoCorrect?: { isCorrect: boolean; earnedScore?: number } | null }>;
+  aiFeedback?: TeacherAiFeedback[];
 }
 
 type SubmissionType = "assignment" | "exam";
@@ -357,6 +371,30 @@ function readableAnswer(value: unknown): string {
   return "Answered";
 }
 
+function TeacherAiSummary({ f }: { f: TeacherAiFeedback }) {
+  const bands = f.bands;
+  return (
+    <div className="mt-2 rounded-md border border-primary/20 bg-primary/5 p-3 text-sm" data-testid="teacher-ai-summary">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+        <span className="flex items-center gap-1 font-medium"><Sparkles className="size-3.5 text-primary" /> AI feedback</span>
+        <span>Score: <span className="font-semibold">{f.overallScore}/100</span></span>
+        {bands?.ielts != null && <span>IELTS <span className="font-semibold">{bands.ielts}</span></span>}
+        {bands?.pte != null && <span>PTE <span className="font-semibold">{bands.pte}</span></span>}
+        {f.createdAt && <span className="text-xs text-muted-foreground">{new Date(f.createdAt).toLocaleString()}</span>}
+      </div>
+      {f.offTopic && (
+        <p className="mt-1.5 flex items-center gap-1 text-xs font-medium text-red-600"><AlertTriangle className="size-3.5" /> Off topic — response does not address the task prompt</p>
+      )}
+      {f.taskResponseNote && <p className="mt-1 text-xs text-muted-foreground">{f.taskResponseNote}</p>}
+      {f.topActions && f.topActions.length > 0 && (
+        <ul className="mt-1.5 space-y-0.5 text-xs text-muted-foreground">
+          {f.topActions.map((action) => <li key={action}>• {action}</li>)}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 function ExamReviewDialog({ submission, onClose, onGraded }: { submission: ExamSubmissionRow | null; onClose: () => void; onGraded: () => void }) {
   const qc = useQueryClient();
   const [score, setScore] = useState<string>("");
@@ -397,8 +435,19 @@ function ExamReviewDialog({ submission, onClose, onGraded }: { submission: ExamS
     onError: (err) => toast.error(getErrorMessage(err)),
   });
 
+  const aiCheckMutation = useMutation({
+    mutationFn: () => apiPost(`/exams/submissions/${submission?._id}/ai-check`),
+    onSuccess: () => {
+      toast.success("AI feedback ready");
+      qc.invalidateQueries({ queryKey: ["grading", "exam-detail", submission?._id] });
+    },
+    onError: (err) => toast.error(getErrorMessage(err)),
+  });
+
   if (!submission) return null;
   const data = detail.data;
+  const aiByQuestion = new Map((data?.aiFeedback ?? []).map((f) => [String(f.questionId), f]));
+  const hasAi = (data?.aiFeedback ?? []).length > 0;
   const maxScore = data?.attempt.maxScore ?? submission.maxScore ?? data?.attempt.finalScore ?? null;
   const currentScore = score || data?.attempt.finalScore?.toString() || "";
   const submitted = ["GRADED", "PUBLISHED"].includes(submission.status);
@@ -424,12 +473,17 @@ function ExamReviewDialog({ submission, onClose, onGraded }: { submission: ExamS
           <ErrorState message="Failed to load attempt details" />
         ) : data ? (
           <>
-            <div className="mb-3 flex flex-wrap items-center gap-x-6 gap-y-1 rounded-md border bg-muted/40 px-4 py-2 text-sm">
-              <div><span className="text-muted-foreground">Objective:</span> <span className="font-medium">{data.attempt.objectiveScore ?? 0}</span></div>
-              <div><span className="text-muted-foreground">Current total:</span> <span className="font-medium">{data.attempt.finalScore ?? "—"}{maxScore != null && data.attempt.finalScore != null ? ` / ${maxScore}` : ""}</span></div>
-              <div><span className="text-muted-foreground">Attempt:</span> <span className="font-medium">#{data.attempt.attemptNumber}</span></div>
-              {submission.practiceBand != null && <div><span className="text-muted-foreground">Band:</span> <span className="font-medium">{submission.practiceBand}</span></div>}
-              {submission.estimatedPteScore != null && <div><span className="text-muted-foreground">Est. PTE:</span> <span className="font-medium">{submission.estimatedPteScore}</span></div>}
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <div className="flex flex-wrap items-center gap-x-6 gap-y-1 rounded-md border bg-muted/40 px-4 py-2 text-sm">
+                <div><span className="text-muted-foreground">Objective:</span> <span className="font-medium">{data.attempt.objectiveScore ?? 0}</span></div>
+                <div><span className="text-muted-foreground">Current total:</span> <span className="font-medium">{data.attempt.finalScore ?? "—"}{maxScore != null && data.attempt.finalScore != null ? ` / ${maxScore}` : ""}</span></div>
+                <div><span className="text-muted-foreground">Attempt:</span> <span className="font-medium">#{data.attempt.attemptNumber}</span></div>
+                {submission.practiceBand != null && <div><span className="text-muted-foreground">Band:</span> <span className="font-medium">{submission.practiceBand}</span></div>}
+                {submission.estimatedPteScore != null && <div><span className="text-muted-foreground">Est. PTE:</span> <span className="font-medium">{submission.estimatedPteScore}</span></div>}
+              </div>
+              <Button type="button" variant="outline" size="sm" onClick={() => aiCheckMutation.mutate()} disabled={aiCheckMutation.isPending}>
+                <Sparkles className="size-3.5 text-primary" /> {aiCheckMutation.isPending ? "Analyzing…" : hasAi ? "Regenerate AI feedback" : "Generate AI feedback"}
+              </Button>
             </div>
 
             <div className="space-y-3">
@@ -475,6 +529,7 @@ function ExamReviewDialog({ submission, onClose, onGraded }: { submission: ExamS
                         {ans.autoCorrect.isCorrect ? "Auto-checked: correct" : "Auto-checked: incorrect"}
                       </p>
                     )}
+                    {aiByQuestion.get(String(q._id ?? q.id ?? i)) && <TeacherAiSummary f={aiByQuestion.get(String(q._id ?? q.id ?? i))!} />}
                   </div>
                 );
               })}
