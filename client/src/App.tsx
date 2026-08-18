@@ -1,7 +1,7 @@
 import { lazy, Suspense } from "react";
 import { Routes, Route } from "react-router-dom";
 import { AppLayout } from "./components/layout/AppLayout";
-import { RequireAuth, RequireRole, GuestOnly } from "./routes/guards";
+import { RequireAuth, RequireRole, GuestOnly, HomeRedirect } from "./routes/guards";
 import { PageSpinner } from "./components/ui/feedback";
 
 const LoginPage = lazy(() => import("./pages/auth/LoginPage").then((m) => ({ default: m.LoginPage })));
@@ -91,6 +91,7 @@ export function App() {
   return (
     <Suspense fallback={<PageSpinner />}>
       <Routes>
+        <Route path="/" element={<HomeRedirect />} />
         <Route path="/login" element={<GuestOnly><LoginPage /></GuestOnly>} />
         <Route path="/forgot-password" element={<GuestOnly><ForgotPasswordPage /></GuestOnly>} />
         <Route path="/reset-password" element={<GuestOnly><ResetPasswordPage /></GuestOnly>} />

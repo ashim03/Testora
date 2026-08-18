@@ -30,6 +30,14 @@ export function GuestOnly({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+export function HomeRedirect() {
+  const user = useAuthStore((s) => s.user);
+  if (!user) return <Navigate to="/login" replace />;
+  const home =
+    user.role === "SUPER_ADMIN" ? "/admin" : user.role === "CONSULTANCY" ? "/consultancy" : user.role === "TEACHER" ? "/teacher" : "/student";
+  return <Navigate to={home} replace />;
+}
+
 export function ProfileLoader() {
   return <PageSpinner />;
 }
