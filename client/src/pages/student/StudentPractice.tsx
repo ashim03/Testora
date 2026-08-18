@@ -2,13 +2,15 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
-import { Play, RotateCcw, Clock, Layers, CheckCircle2, BookOpen, GraduationCap, X, Brain, Target, TrendingUp } from "lucide-react";
+import { Play, RotateCcw, Clock, Layers, CheckCircle2, BookOpen, GraduationCap, X, Brain, Target, TrendingUp, Sparkles, RefreshCw } from "lucide-react";
 import { apiGet, apiPost } from "../../api/client";
 import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { TableToolbar, Pagination, TableSkeleton } from "../../components/ui/table-toolbar";
-import { ErrorState, EmptyState } from "../../components/ui/feedback";
+import { ErrorState, EmptyState, Spinner } from "../../components/ui/feedback";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../components/ui/dialog";
+import { FeedbackDetail, type AIFeedback } from "../../components/ai/AIFeedbackDetail";
 import { getErrorMessage, formatDuration, titleCase } from "../../utils";
 import { QUESTION_CATEGORIES, SECTIONAL_PARTS } from "@testora-platform/shared";
 
@@ -22,6 +24,8 @@ interface PracticeItem { exam: { _id: string; title: string; category: string; t
 interface LearningProfileData { skills: Array<{ skill: string; score: number; attempts: number; trend: number; lastPracticedAt?: string | null }>; totalPracticeSessions: number; currentStreak: number; lastPracticeAt?: string | null; }
 interface AdaptivePlan { skill: string; mastery: number; difficulty: string; reason: string; }
 interface AdaptiveData { plan: AdaptivePlan[]; weakAreas: Array<{ category: string; averageScore: number; difficulty: string; source: string }>; }
+interface AICheckQuestion { questionId: string; questionTitle: string; prompt: string | null; answer: string; feedback: AIFeedback | null; error: string | null; reused: boolean; }
+interface AICheckResult { attemptId: string; examId: string; examTitle: string; questions: AICheckQuestion[]; }
 
 const CATEGORIES = QUESTION_CATEGORIES as string[];
 const attemptVariant = (status?: string): "secondary" | "outline" | "success" | "default" | "warning" => {
@@ -31,6 +35,56 @@ const attemptVariant = (status?: string): "secondary" | "outline" | "success" | 
   return "outline";
 };
 
+function PracticeAICheckDialog({ attemptId, examTitle, open, onClose }: { attemptId: string; examTitle: string; open: boolean; onClose: () => void }) {
+  const { data, isFetching, error, refetch, isError } = useQuery({
+    queryKey: ["student", "attempt-ai-check", attemptId],
+    queryFn: async () => (await apiPost<AICheckResult>(`/student/attempts/${attemptId}/ai-check`)).data,
+    enabled: open && !!attemptId,
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader><DialogTitle className="flex items-center gap-2 pr-6"><Sparkles className="size-4 text-primary" /> AI check: {examTitle}</DialogTitle></DialogHeader>
+        <div className="max-h-[75vh] space-y-4 overflow-y-auto pr-1">
+          {isFetching && !data ? (
+            <div className="flex flex-col items-center gap-3 py-10 text-center">
+              <Spinner className="size-8 text-primary" />
+              <p className="text-sm text-muted-foreground">Analyzing your answers with an IELTS/PTE examiner model… this can take up to a minute.</p>
+            </div>
+          ) : isError ? (
+            <div className="flex flex-col items-center gap-3 py-8 text-center">
+              <p className="text-sm text-destructive">{error instanceof Error ? error.message : "AI check failed. Please try again."}</p>
+              <Button size="sm" variant="outline" onClick={() => refetch()} disabled={isFetching}><RefreshCw className="size-4" /> Retry</Button>
+            </div>
+          ) : data ? (
+            data.questions.length === 0 ? (
+              <EmptyState icon={Brain} title="Nothing to check" description="This attempt has no essay or writing answers that can be checked by AI." />
+            ) : (
+              data.questions.map((q, i) => (
+                <div key={q.questionId} className="rounded-lg border">
+                  <div className="border-b p-3">
+                    <p className="font-medium">Question {i + 1} · {q.questionTitle}</p>
+                    {q.prompt && <details className="mt-1 text-xs text-muted-foreground"><summary className="cursor-pointer">Task prompt</summary><p className="mt-1 whitespace-pre-line">{q.prompt}</p></details>}
+                    {q.reused && q.feedback && <p className="mt-1 text-xs text-muted-foreground">Previously generated · {q.feedback.createdAt ? new Date(q.feedback.createdAt).toLocaleString() : ""}</p>}
+                  </div>
+                  <div className="p-4">
+                    {q.feedback ? <FeedbackDetail f={q.feedback} /> : q.error ? (
+                      <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{q.error}</div>
+                    ) : (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground"><Spinner className="size-4 text-primary" /> Waiting for AI…</div>
+                    )}
+                  </div>
+                </div>
+              ))
+            )
+          ) : null}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export function StudentPractice() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -38,6 +92,7 @@ export function StudentPractice() {
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState(searchParams.get("section") || "");
   const [examType, setExamType] = useState<string>("");
+  const [aiCheck, setAiCheck] = useState<{ attemptId: string; examTitle: string } | null>(null);
   const part = searchParams.get("part") || "";
   const sectionLabel = (category && SECTIONAL_PARTS[category]?.label) || "";
   const partLabel = (part && SECTIONAL_PARTS[category]?.parts.find((p) => p.key === part)?.label) || "";
@@ -98,12 +153,13 @@ export function StudentPractice() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {items.map((item) => { const attempt = item.attempt; const started = !!attempt; const inProgress = attempt?.status === "IN_PROGRESS"; const done = attempt && ["GRADED", "PUBLISHED", "SUBMITTED", "UNDER_REVIEW"].includes(attempt.status); const lastScore = done ? attempt.finalScore : null; const lastMax = done ? attempt.maxScore : null; return (
             <Card key={item.exam._id} className="flex flex-col"><CardHeader className="pb-2"><div><Badge variant="secondary">{titleCase(item.exam.category)}</Badge>{item.exam.part && SECTIONAL_PARTS[item.exam.category] && <Badge variant="secondary" className="ml-1">{SECTIONAL_PARTS[item.exam.category].parts.find((p) => p.key === item.exam.part)?.label}</Badge>}<Badge variant={attemptVariant(attempt?.status)} className="ml-1">{inProgress ? "In progress" : done ? titleCase(attempt.status) : "Not started"}</Badge></div><CardTitle className="text-base leading-snug">{item.exam.title}</CardTitle></CardHeader>
-              <CardContent className="flex flex-1 flex-col gap-3">{item.exam.description && <p className="line-clamp-2 text-sm text-muted-foreground">{item.exam.description}</p>}<div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground"><span className="flex items-center gap-1"><Layers className="size-3.5" /> {item.questionCount} questions</span><span className="flex items-center gap-1"><Clock className="size-3.5" /> {item.exam.durationSec ? formatDuration(item.exam.durationSec) : "Untimed"}</span></div><div className="flex items-center gap-1 text-xs text-muted-foreground"><GraduationCap className="size-3.5" /> Attempts used: {item.attemptsUsed} / {item.exam.attemptLimit ?? 1}{item.remainingAttempts === 0 && <span className="ml-auto text-amber-600">Limit reached</span>}</div>{lastScore != null && <div className="flex items-center gap-1 rounded-md bg-accent/10 px-3 py-2 text-sm font-medium text-accent-700"><CheckCircle2 className="size-4" /> Last score: {lastScore}{lastMax != null ? ` / ${lastMax}` : ""}</div>}<div className="mt-auto pt-1"><Button className="w-full" size="sm" disabled={startMutation.isPending || (item.remainingAttempts === 0 && !inProgress)} onClick={() => startMutation.mutate(item.exam._id)}>{inProgress ? <><RotateCcw className="size-4" /> Resume attempt</> : started ? <><RotateCcw className="size-4" /> Start new attempt</> : <><Play className="size-4" /> Start practice</>}</Button></div></CardContent>
+              <CardContent className="flex flex-1 flex-col gap-3">{item.exam.description && <p className="line-clamp-2 text-sm text-muted-foreground">{item.exam.description}</p>}<div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground"><span className="flex items-center gap-1"><Layers className="size-3.5" /> {item.questionCount} questions</span><span className="flex items-center gap-1"><Clock className="size-3.5" /> {item.exam.durationSec ? formatDuration(item.exam.durationSec) : "Untimed"}</span></div><div className="flex items-center gap-1 text-xs text-muted-foreground"><GraduationCap className="size-3.5" /> Attempts used: {item.attemptsUsed} / {item.exam.attemptLimit ?? 1}{item.remainingAttempts === 0 && <span className="ml-auto text-amber-600">Limit reached</span>}</div>{lastScore != null && <div className="flex items-center gap-1 rounded-md bg-accent/10 px-3 py-2 text-sm font-medium text-accent-700"><CheckCircle2 className="size-4" /> Last score: {lastScore}{lastMax != null ? ` / ${lastMax}` : ""}</div>}<div className="mt-auto space-y-2 pt-1">{done && attempt && <Button className="w-full" variant="outline" size="sm" onClick={() => setAiCheck({ attemptId: attempt._id, examTitle: item.exam.title })}><Sparkles className="size-4 text-primary" /> Check with AI</Button>}<Button className="w-full" size="sm" disabled={startMutation.isPending || (item.remainingAttempts === 0 && !inProgress)} onClick={() => startMutation.mutate(item.exam._id)}>{inProgress ? <><RotateCcw className="size-4" /> Resume attempt</> : started ? <><RotateCcw className="size-4" /> Start new attempt</> : <><Play className="size-4" /> Start practice</>}</Button></div></CardContent>
             </Card>
           ); })}
         </div>
       )}
       {pagination && pagination.pages > 1 && <Pagination page={pagination.page} pages={pagination.pages} onPageChange={setPage} />}
+      <PracticeAICheckDialog attemptId={aiCheck?.attemptId ?? ""} examTitle={aiCheck?.examTitle ?? ""} open={!!aiCheck} onClose={() => setAiCheck(null)} />
     </div>
   );
 }
